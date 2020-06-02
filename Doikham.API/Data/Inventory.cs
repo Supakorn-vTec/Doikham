@@ -1,0 +1,772 @@
+﻿using Doikham.Shared.Database;
+using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
+using System.Globalization;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace Doikham.API.Data
+{
+    public interface IInventory
+    {
+        public Task<bool> PurchaseOrderAsync(PURCHASEDOCUMENT purchase);
+        public Task<GOODRECEIPTDOCUMENT> PurchaseOrderReciptAsync(string documentKey);
+        public Task<GOODRECEIPTDOCUMENT> DirectReciptAsync(string documentKey);
+        public Task<REQUESTDOCUMENT> RequestOrderAsync(string documentKey);
+        public Task<bool> TransferOrderAsync(GOODISSUEOUTDOCUMENT issueData);
+        public Task<GOODRECEIPTDOCUMENT> TransferOrderReciptAsync(string documentKey);
+        public Task<GOODISSUEINDOCUMENT> AdjustOrderAsync(string documentKey, string docTypeCode);
+
+    }
+    public class Inventory : IInventory
+    {
+        private readonly IConfiguration _config;
+        private IDBHelper _dbHelper;
+        private string connString = "";
+        private IPOSLog posLog;
+        CultureInfo invC;
+        public Inventory(IConfiguration configuration, IDBHelper dBHelper, IPOSLog pOSLog)
+        {
+            _config = configuration;
+            _dbHelper = dBHelper;
+            posLog = pOSLog;
+            connString = _config.GetSection("Database")["ConnectionString"];
+            invC = new CultureInfo("en-US");
+        }
+
+
+        #region "Adjust Order"
+        public async Task<GOODISSUEINDOCUMENT> AdjustOrderAsync(string documentKey, string docTypeCode)
+        {
+
+            GOODISSUEINDOCUMENT data = new GOODISSUEINDOCUMENT();
+            DataTable dtH = new DataTable();
+            DataTable dtL = new DataTable();
+
+            dtH = await Task.Run(() => GetDocumentHeader(documentKey));
+            dtL = await Task.Run(() => GetDocumentDetail(documentKey));
+
+            GOODISSUEIN_HEADER header = new GOODISSUEIN_HEADER();
+            if (dtH.Rows.Count > 0)
+            {
+                int docTypeId = Convert.ToInt32(dtH.Rows[0]["DocumentTypeId"]);
+                header.POSTYPE = docTypeCode;
+                header.POSDOCITEM = dtH.Rows[0]["documentno"].ToString();
+                header.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                if(docTypeId == 3)
+                {
+                    header.RESNO = dtH.Rows[0]["documentnoref"].ToString();
+                }
+                else
+                {
+                    header.RESNO = "";
+                }
+                header.BUDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                header.XBLNR = "";
+                header.USNAM = dtH.Rows[0]["staffcode"].ToString();
+                List<GOODISSUEIN_ITEMS> items = new List<GOODISSUEIN_ITEMS>();
+                if (dtL.Rows.Count > 0)
+                {
+                    items = (from DataRow dr in dtL.Rows
+                             select new GOODISSUEIN_ITEMS()
+                             {
+                                 POSGIITEMNO = dr["DocDetailID"].ToString(),
+                                 RESITEMNO = dr["RESITEMNO"].ToString(),
+                                 MATNR = dr["ProductCode"].ToString(),
+                                 SWERKS = dr["ShopCode"].ToString(),
+                                 RWERKS = dr["ToShopCode"].ToString(),
+                                 MENGE = dr["Qty"].ToString(),
+                                 MEINS = dr["UnitName"].ToString(),
+                                 SGTXT = "",
+                             }).ToList();
+                }
+                header.ITEMS = items;
+            }
+            GOODISSUEIN_ORDER adjust = new GOODISSUEIN_ORDER();
+            adjust.HEADER = header;
+
+            data.GOODS_ISSUE_IN = adjust;
+            return data;
+        }
+        #endregion
+
+        #region "Request Order From SAP"
+        public async Task<REQUESTDOCUMENT> RequestOrderAsync(string documentKey)
+        {
+
+            REQUESTDOCUMENT data = new REQUESTDOCUMENT();
+            DataTable dtH = new DataTable();
+            DataTable dtL = new DataTable();
+
+            dtH = await Task.Run(() => GetDocumentHeader(documentKey));
+            dtL = await Task.Run(() => GetDocumentDetail(documentKey));
+
+            REQUEST_HEADER header = new REQUEST_HEADER();
+            if (dtH.Rows.Count > 0)
+            {
+                header.POSTYPE = "RQ";
+                header.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                header.BKTXT = dtH.Rows[0]["documentno"].ToString();
+                header.HGTXT = dtH.Rows[0]["remark"].ToString();
+                List<REQUEST_ITEMS> items = new List<REQUEST_ITEMS>();
+                if (dtL.Rows.Count > 0)
+                {
+                    items = (from DataRow dr in dtL.Rows
+                             select new REQUEST_ITEMS()
+                             {
+                                 ZEILE = dr["DocDetailID"].ToString(),
+                                 MATNR = dr["ProductCode"].ToString(),
+                                 MAKTX = dr["ProductName"].ToString(),
+                                 WERKS = dr["ShopCode"].ToString(),
+                                 SUPPLANT = dr["ToShopCode"].ToString(),
+                                 MENGE = dr["Qty"].ToString(),
+                                 MEINS = dr["UnitName"].ToString(),
+                                 DELDATE = Convert.ToDateTime(dr["DueDate"]).ToString("yyyyMMdd", invC),
+                                 SGTXT = "",
+                             }).ToList();
+                }
+                header.ITEMS = items;
+            }
+            REQUEST_ORDER request = new REQUEST_ORDER();
+            request.HEADER = header;
+
+            data.REQUEST_FORM = request;
+            return data;
+        }
+        public async Task<bool> TransferOrderAsync(GOODISSUEOUTDOCUMENT issueData)
+        {
+            GOODISSUEOUT_ORDER data = new GOODISSUEOUT_ORDER();
+            data = issueData.GOODS_ISSUE_OUT;
+
+            bool status = true;
+            int shopId = 1;
+            int toShopId = 0;
+            int fromShopId = 0;
+            int documentId = 0;
+            int documentTypeId = 3;
+            int staffId = 2;
+            int keyShopId = 1;
+            string documentTypeCode = "";
+            string shopCode = "HQ";
+            string documentKey = "";
+            string documentDate = "";
+
+            if (data.HEADER.ITEMS.Count > 0)
+            {
+                string ToShopCode = data.HEADER.ITEMS[0].WERKS;
+                shopId = 1;
+                toShopId = await Task.Run(() => GetInventoryID(ToShopCode));
+
+                DataTable dtT = new DataTable();
+                dtT = await Task.Run(() => GetDocumentType(documentTypeId));
+                if (dtT.Rows.Count > 0)
+                {
+                    documentTypeCode = dtT.Rows[0]["DocumentTypeHeader"].ToString();
+                }
+                using (SqlConnection connection = new SqlConnection(connString))
+                {
+                    connection.Open();
+                    SqlCommand command = connection.CreateCommand();
+                    SqlTransaction transaction;
+
+                    transaction = connection.BeginTransaction(IsolationLevel.ReadCommitted);
+                    command.Connection = connection;
+                    command.Transaction = transaction;
+
+                    try
+                    {
+
+                        string documentNo = "";
+                        string documentNoRef = "";
+
+                        string invoicePODate = "";
+                        string dueDate = "";
+                        string timeStamp = "";
+                        string invoiceRef = "";
+                        int documentYear = 0;
+                        int documentMonth = 0;
+                        int documentDay = 0;
+                        int documentNumber = 0;
+                        int docdetailId = 0;
+                        int vendorId = 0;
+                        int vendorGroupId = 0;
+                        int documentStatus = 2;
+                        int documentIdRef = 0;
+                        int docIdRefShopId = 0;
+                        decimal subTotal = 0;
+                        decimal totalDiscount = 0;
+                        decimal totalVAT = 0;
+                        decimal netPrice = 0;
+                        decimal grandTotal = 0;
+                        int vatPercent = 7;
+
+                        DateTime syncDate = DateTime.Now;
+                        string docDate = syncDate.ToString("yyyy-MM-dd");
+                        documentYear = syncDate.Year;
+                        documentMonth = syncDate.Month;
+                        documentDay = syncDate.Day;
+                        documentDate = "{ d '" + docDate + "' }";
+                        dueDate = "{ d '" + docDate + "' }";
+                        invoicePODate = "{ d '" + docDate + "' }";
+                        timeStamp = "{ ts '" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", invC) + "' }";
+
+                        documentId = await Task.Run(() => GetDocumentID(keyShopId, connection, transaction));
+                        documentKey = $"{documentId}:{keyShopId}";
+
+                        documentNo = await Task.Run(() => GetDocumentNumber(shopId, documentTypeId, documentMonth, documentYear, shopCode, documentTypeCode, connection, transaction));
+                        documentNoRef = data.HEADER.MBLNR;
+                        invoiceRef = data.HEADER.ITEMS[0].EBELN;
+
+                        await Task.Run(() => InsertDocumentHeader(documentId, keyShopId, documentKey, vendorId, vendorGroupId, documentTypeId, documentYear, documentMonth, documentNumber, documentNo, documentNoRef, invoiceRef, documentDate, shopId, documentStatus, documentIdRef, docIdRefShopId, toShopId, fromShopId, subTotal, totalDiscount, totalVAT, netPrice, grandTotal, data.HEADER.BKTXT, staffId, staffId, staffId, 0, timeStamp, timeStamp, timeStamp, dueDate, invoicePODate, vatPercent, connection, transaction));
+
+                        docdetailId = await Task.Run(() => GetMaxDocdetailID(documentId, keyShopId, connection, transaction));
+
+                        for (int i = 0; i < data.HEADER.ITEMS.Count; i++)
+                        {
+                            int materialId = 0;
+                            string materialCode = "";
+                            string materialName = "";
+                            string unitName = "";
+                            decimal materialQty = 0;
+                            int unitsmallId = 0;
+                            int unitlargeId = 0;
+                            int unitlargeRatio = 1;
+                            decimal unitratio = 0;
+                            decimal pricePerUnit = 0;
+                            int discountType = 0;
+                            decimal percentDiscount = 0;
+                            decimal amountDiscount = 0;
+                            int vatType = 0;
+                            string vatCode = "N";
+                            decimal totalVat = 0;
+                            decimal totalPrice = 0;
+                            decimal unitsmallQty = 0;
+                            string supplierMaterialCode = "";
+                            string supplierMaterialName = "";
+                            string remarkLine = "";
+                            DataTable dt = new DataTable();
+
+                            dt = await Task.Run(() => CheckMaterial(data.HEADER.ITEMS[i].MATNR, data.HEADER.ITEMS[i].MEINS, connection, transaction));
+
+                            if (dt.Rows.Count > 0)
+                            {
+                                materialId = Convert.ToInt32(dt.Rows[0]["materialid"]);
+                                materialCode = data.HEADER.ITEMS[i].MATNR;
+                                materialName = dt.Rows[0]["materialname"].ToString();
+                                supplierMaterialCode = data.HEADER.ITEMS[i].EBELN;
+                                unitName = data.HEADER.ITEMS[i].MEINS;
+                                materialQty = Convert.ToDecimal(data.HEADER.ITEMS[i].MENGE);
+                                unitsmallId = Convert.ToInt32(dt.Rows[0]["unitsmallId"]);
+                                unitlargeId = Convert.ToInt32(dt.Rows[0]["unitlargeId"]);
+                                unitratio = Convert.ToDecimal(dt.Rows[0]["UnitSmallRatio"]);
+                                unitsmallQty = (materialQty * unitlargeRatio);
+                                docdetailId = Convert.ToInt32(data.HEADER.ITEMS[i].EBELP);
+
+                                await Task.Run(() => InsertDocumentDetail(docdetailId, documentId, keyShopId, documentKey, documentDate, shopId, materialId, materialCode, materialName, supplierMaterialCode, supplierMaterialName, materialQty, pricePerUnit, discountType, percentDiscount, amountDiscount, totalDiscount, netPrice, vatType, vatCode, totalVat, totalPrice, unitsmallQty, unitsmallId, unitlargeId, unitratio, unitlargeRatio, unitName, remarkLine, connection, transaction));
+
+                            }
+                            docdetailId += docdetailId;
+                        }
+
+                    }
+                    catch (Exception ex)
+                    {
+                        transaction.Rollback();
+                        status = false;
+                    }
+                    transaction.Commit();
+                    connection.Close();
+                }
+
+                string json = JsonConvert.SerializeObject(data);
+                string statusCode = "S";
+                await Task.Run(() => posLog.SetLog(data.HEADER.MBLNR, shopId, documentDate, documentTypeId, statusCode, json));
+            }
+            return status;
+        }
+        public async Task<GOODRECEIPTDOCUMENT> TransferOrderReciptAsync(string documentKey)
+        {
+
+            GOODRECEIPTDOCUMENT data = new GOODRECEIPTDOCUMENT();
+            DataTable dtH = new DataTable();
+            DataTable dtL = new DataTable();
+            DataTable dtR = new DataTable();
+
+            dtH = await Task.Run(() => GetDocumentHeader(documentKey));
+            dtL = await Task.Run(() => GetDocumentRODetail(documentKey));
+
+            
+            GOODRECEIPT_HEADER header = new GOODRECEIPT_HEADER();
+            if (dtH.Rows.Count > 0)
+            {
+                header.POSTYPE = "TRO";
+                header.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                header.BKTXT = dtH.Rows[0]["documentno"].ToString();
+                header.LFSNR = "Interface";
+                header.BUDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                header.USNAM = dtH.Rows[0]["staffcode"].ToString();
+                List<GOODRECEIPT_ITEMS> items = new List<GOODRECEIPT_ITEMS>();
+                if (dtL.Rows.Count > 0)
+                {
+                    items = (from DataRow dr in dtL.Rows
+                             select new GOODRECEIPT_ITEMS()
+                             {
+                                 ZEILE = dr["Row_num"].ToString(),
+                                 MATNR = dr["ProductCode"].ToString(),
+                                 WERKS = dr["ShopCode"].ToString(),
+                                 LIFNR = "",
+                                 SWERKS = dr["ShopCode"].ToString(),
+                                 MENGE = dr["Qty"].ToString(),
+                                 MEINS = dr["UnitName"].ToString(),
+                                 NETPR = "0.00",
+                                 NETWR ="0.00",
+                                 EBELN = dr["EBELN"].ToString(),
+                                 EBELP = dr["EBELP"].ToString(),
+                                 SGTXT = "",
+                             }).ToList();
+                }
+                header.ITEMS = items;
+            }
+            GOODRECEIPT_ORDER goodsReceipts = new GOODRECEIPT_ORDER();
+            goodsReceipts.HEADER = header;
+
+            data.GOODS_RECEIPT = goodsReceipts;
+            return data;
+        }
+        #endregion
+
+        #region "Purchase Order"
+        public async Task<bool> PurchaseOrderAsync(PURCHASEDOCUMENT purchase)
+        {
+
+            PURCHASE_ORDER data = new PURCHASE_ORDER();
+            data = purchase.PURCHASE_ORDER;
+
+            bool status = true;
+            int shopId = 1;
+            int toShopId = 0;
+            int fromShopId = 0;
+            int documentId = 0;
+            int documentTypeId = 1;
+            int staffId = 2;
+            int keyShopId = 1;
+            int vendorId = 0;
+            string documentTypeCode = "";
+            string shopCode = "";
+            string docDate = "";
+            string documentDate = "";
+            string documentKey = "";
+
+            if (data.HEADER.ITEMS.Count > 0)
+            {
+
+                shopId = await Task.Run(() => GetInventoryID(data.HEADER.ITEMS[0].WERKS));
+                shopCode = data.HEADER.ITEMS[0].WERKS;
+
+                DataTable dtT = new DataTable();
+                dtT = await Task.Run(() => GetDocumentType(documentTypeId));
+                if (dtT.Rows.Count > 0)
+                {
+                    documentTypeCode = dtT.Rows[0]["DocumentTypeHeader"].ToString();
+                }
+
+                vendorId = await Task.Run(() => GetVendorID(data.HEADER.LIFNR));
+                using (SqlConnection connection = new SqlConnection(connString))
+                {
+                    connection.Open();
+                    SqlCommand command = connection.CreateCommand();
+                    SqlTransaction transaction;
+
+                    transaction = connection.BeginTransaction(IsolationLevel.ReadCommitted);
+                    command.Connection = connection;
+                    command.Transaction = transaction;
+
+                    try
+                    {
+
+                        string documentNo = "";
+                        string documentNoRef = "";
+
+                        string invoicePODate = "";
+                        string dueDate = "";
+                        string timeStamp = "";
+                        int documentYear = 0;
+                        int documentMonth = 0;
+                        int documentDay = 0;
+                        int documentNumber = 0;
+                        int docdetailId = 0;
+                        int vendorGroupId = 0;
+                        int documentStatus = 2;
+                        int documentIdRef = 0;
+                        int docIdRefShopId = 0;
+                        decimal subTotal = 0;
+                        decimal totalDiscount = 0;
+                        decimal totalVAT = 0;
+                        decimal netPrice = 0;
+                        decimal grandTotal = 0;
+                        string remark = "";
+                        int vatPercent = 7;
+
+                        DateTime syncDate = DateTime.Now;
+                        docDate = syncDate.ToString("yyyy-MM-dd", invC);
+                        documentYear = syncDate.Year;
+                        documentMonth = syncDate.Month;
+                        documentDay = syncDate.Day;
+                        documentDate = "{ d '" + docDate + "' }";
+                        dueDate = "{ d '" + docDate + "' }";
+                        invoicePODate = "{ d '" + docDate + "' }";
+                        timeStamp = "{ ts '" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", invC) + "' }";
+
+                        documentId = await Task.Run(() => GetDocumentID(keyShopId, connection, transaction));
+                        documentKey = $"{documentId}:{keyShopId}";
+
+                        documentNo = await Task.Run(() => GetDocumentNumber(shopId, documentTypeId, documentMonth, documentYear, shopCode, documentTypeCode, connection, transaction));
+                        documentNoRef = data.HEADER.EBELN;
+
+                        await Task.Run(() => InsertDocumentHeader(documentId, keyShopId, documentKey, vendorId, vendorGroupId, documentTypeId, documentYear, documentMonth, documentNumber, documentNo, documentNoRef, documentDate, shopId, documentStatus, documentIdRef, docIdRefShopId, toShopId, fromShopId, subTotal, totalDiscount, totalVAT, netPrice, grandTotal, remark, staffId, staffId, staffId, 0, timeStamp, timeStamp, timeStamp, dueDate, invoicePODate, vatPercent, connection, transaction));
+
+                        docdetailId = await Task.Run(() => GetMaxDocdetailID(documentId, keyShopId, connection, transaction));
+
+                        for (int i = 0; i < data.HEADER.ITEMS.Count; i++)
+                        {
+                            int materialId = 0;
+                            string materialCode = "";
+                            string materialName = "";
+                            string unitName = "";
+                            decimal materialQty = 0;
+                            int unitsmallId = 0;
+                            int unitlargeId = 0;
+                            int unitlargeRatio = 1;
+                            decimal unitratio = 0;
+                            decimal pricePerUnit = 0;
+                            int discountType = 0;
+                            decimal percentDiscount = 0;
+                            decimal amountDiscount = 0;
+                            int vatType = 1;
+                            string vatCode = "V";
+                            decimal totalVat = 0;
+                            decimal totalPrice = 0;
+                            decimal unitsmallQty = 0;
+                            string supplierMaterialCode = "";
+                            string supplierMaterialName = "";
+                            string remarkLine = "";
+                            DataTable dt = new DataTable();
+
+                            dt = await Task.Run(() => CheckMaterial(data.HEADER.ITEMS[i].MATNR, data.HEADER.ITEMS[i].MEINS, connection, transaction));
+
+                            if (dt.Rows.Count > 0)
+                            {
+                                materialId = Convert.ToInt32(dt.Rows[0]["materialid"]);
+                                materialCode = data.HEADER.ITEMS[i].MATNR;
+                                materialName = dt.Rows[0]["materialname"].ToString();
+                                unitName = data.HEADER.ITEMS[i].MEINS;
+                                materialQty = data.HEADER.ITEMS[i].MENGE;
+                                pricePerUnit = Convert.ToDecimal(data.HEADER.ITEMS[i].NETPR);
+                                totalPrice = Convert.ToDecimal(data.HEADER.ITEMS[i].NETWR);
+                                unitsmallId = Convert.ToInt32(dt.Rows[0]["unitsmallId"]);
+                                unitlargeId = Convert.ToInt32(dt.Rows[0]["unitlargeId"]);
+                                unitratio = Convert.ToDecimal(dt.Rows[0]["UnitSmallRatio"]);
+                                unitsmallQty = (materialQty * unitlargeRatio);
+                                totalVat = (totalPrice * vatPercent / 107);
+                                netPrice = (totalPrice - totalVat);
+                                docdetailId = Convert.ToInt32(data.HEADER.ITEMS[i].EBELP);
+
+                                await Task.Run(() => InsertDocumentDetail(docdetailId, documentId, keyShopId, documentKey, documentDate, shopId, materialId, materialCode, materialName, supplierMaterialCode, supplierMaterialName, materialQty, pricePerUnit, discountType, percentDiscount, amountDiscount, totalDiscount, netPrice, vatType, vatCode, totalVat, totalPrice, unitsmallQty, unitsmallId, unitlargeId, unitratio, unitlargeRatio, unitName, remarkLine, connection, transaction));
+
+                            }
+                            docdetailId += docdetailId;
+                        }
+
+                    }
+                    catch (Exception ex)
+                    {
+                        transaction.Rollback();
+                        status = false;
+                    }
+                    transaction.Commit();
+                    connection.Close();
+                }
+
+                string json = JsonConvert.SerializeObject(data);
+                string statusCode = "S";
+                await Task.Run(() => posLog.SetLog(data.HEADER.EBELN, shopId, documentDate, documentTypeId, statusCode, json));
+            }
+            return status;
+        }
+        public async Task<GOODRECEIPTDOCUMENT> PurchaseOrderReciptAsync(string documentKey)
+        {
+
+            GOODRECEIPTDOCUMENT data = new GOODRECEIPTDOCUMENT();
+            DataTable dtH = new DataTable();
+            DataTable dtL = new DataTable();
+
+            dtH = await Task.Run(() => GetDocumentHeader(documentKey));
+            dtL = await Task.Run(() => GetDocumentDetail(documentKey));
+
+            GOODRECEIPT_HEADER header = new GOODRECEIPT_HEADER();
+            if (dtH.Rows.Count > 0)
+            {
+                header.POSTYPE = "RO";
+                header.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                header.BKTXT = dtH.Rows[0]["documentno"].ToString();
+                header.LFSNR = "Interface";
+                header.BUDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                header.USNAM = dtH.Rows[0]["staffcode"].ToString();
+                List<GOODRECEIPT_ITEMS> items = new List<GOODRECEIPT_ITEMS>();
+                if (dtL.Rows.Count > 0)
+                {
+                    items = (from DataRow dr in dtL.Rows
+                             select new GOODRECEIPT_ITEMS()
+                             {
+                                 ZEILE = dr["DocDetailID"].ToString(),
+                                 MATNR = dr["ProductCode"].ToString(),
+                                 WERKS = dr["ShopCode"].ToString(),
+                                 LIFNR = dr["VendorCode"].ToString(),
+                                 SWERKS = dr["ShopCode"].ToString(),
+                                 MENGE = dr["Qty"].ToString(),
+                                 MEINS = dr["UnitName"].ToString(),
+                                 NETPR = dr["ProductPricePerUnit"].ToString(),
+                                 NETWR = dr["ProductTotalPrice"].ToString(),
+                                 EBELN = dr["DocumentNoRef"].ToString(),
+                                 EBELP = Convert.ToInt32(dr["DocDetailID"]).ToString(),
+                                 SGTXT = "",
+                             }).ToList();
+                }
+                header.ITEMS = items;
+            }
+            GOODRECEIPT_ORDER goodsReceipts = new GOODRECEIPT_ORDER();
+            goodsReceipts.HEADER = header;
+
+            data.GOODS_RECEIPT = goodsReceipts;
+            return data;
+        }
+        public async Task<GOODRECEIPTDOCUMENT> DirectReciptAsync(string documentKey)
+        {
+
+            GOODRECEIPTDOCUMENT data = new GOODRECEIPTDOCUMENT();
+            DataTable dtH = new DataTable();
+            DataTable dtL = new DataTable();
+
+            dtH = await Task.Run(() => GetDocumentHeader(documentKey));
+            dtL = await Task.Run(() => GetDocumentDetail(documentKey));
+
+            GOODRECEIPT_HEADER header = new GOODRECEIPT_HEADER();
+            if (dtH.Rows.Count > 0)
+            {
+                header.POSTYPE = "DRO";
+                header.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                header.BKTXT = dtH.Rows[0]["documentno"].ToString();
+                header.LFSNR = "Interface";
+                header.BUDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                header.USNAM = dtH.Rows[0]["staffcode"].ToString();
+                List<GOODRECEIPT_ITEMS> items = new List<GOODRECEIPT_ITEMS>();
+                if (dtL.Rows.Count > 0)
+                {
+                    items = (from DataRow dr in dtL.Rows
+                             select new GOODRECEIPT_ITEMS()
+                             {
+                                 ZEILE = dr["DocDetailID"].ToString(),
+                                 MATNR = dr["ProductCode"].ToString(),
+                                 WERKS = dr["ShopCode"].ToString(),
+                                 LIFNR = dr["VendorCode"].ToString(),
+                                 SWERKS = dr["ShopCode"].ToString(),
+                                 MENGE = dr["Qty"].ToString(),
+                                 MEINS = dr["UnitName"].ToString(),
+                                 NETPR = dr["ProductPricePerUnit"].ToString(),
+                                 NETWR = dr["ProductTotalPrice"].ToString(),
+                                 EBELN = dr["DocumentNoRef"].ToString(),
+                                 EBELP = Convert.ToInt32(dr["DocDetailID"]).ToString(),
+                                 SGTXT = "",
+                             }).ToList();
+                }
+                header.ITEMS = items;
+            }
+            GOODRECEIPT_ORDER goodsReceipts = new GOODRECEIPT_ORDER();
+            goodsReceipts.HEADER = header;
+
+            data.GOODS_RECEIPT = goodsReceipts;
+            return data;
+        }
+        #endregion
+
+        #region "Document Data"
+        private async Task<int> GetDocumentID(int shopId, SqlConnection connection, SqlTransaction transaction)
+        {
+            int documentId = await Task.Run(() => GetMaxDocumentID(shopId, connection, transaction));
+            await Task.Run(() => DeleteDocumentID(shopId, connection, transaction));
+            await Task.Run(() => CreateDocumentID(shopId, documentId, connection, transaction));
+
+            return documentId;
+        }
+        private async Task<string> GetDocumentNumber(int shopId, int documentTypeId, int documentMonth, int documentYear, string shopCode, string documentTypeCode, SqlConnection connection, SqlTransaction transaction)
+        {
+            int documentNumber = await Task.Run(() => GetMaxDocumentNumber(shopId, documentTypeId, documentMonth, documentYear, connection, transaction));
+            await Task.Run(() => DeleteDocumentNumber(shopId, documentTypeId, documentMonth, documentYear, connection, transaction));
+            await Task.Run(() => CreateDocumentNumber(shopId, documentTypeId, documentMonth, documentYear, documentNumber, connection, transaction));
+            string runningNumber = (10000 + documentNumber).ToString();
+            string documentNo = $"{shopCode}{documentTypeCode}{documentYear}{documentMonth}/{runningNumber.Substring(runningNumber.Length - 4, 4)}";
+            return documentNo;
+        }
+        private async Task<int> GetMaxDocumentID(int shopId, SqlConnection connection, SqlTransaction transaction)
+        {
+            DataTable dt = new DataTable();
+            string queryStr = $"select case when  max(DocumentID) is null then 1 else max(DocumentID)+1 end DocumentID from DocumentMaxID where KeyShopID={shopId}";
+            dt = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connection, transaction));
+            int id = 1;
+            if (dt.Rows.Count > 0)
+            {
+                id = Convert.ToInt32(dt.Rows[0]["documentid"]);
+            }
+            return id;
+        }
+        private async Task<int> CreateDocumentID(int shopId, int documentId, SqlConnection connection, SqlTransaction transaction)
+        {
+            string queryStr = $"insert into DocumentMaxID(KeyShopID,DocumentID)values({shopId},{documentId});";
+            return await Task.Run(() => _dbHelper.ExecuteNonQuery(queryStr, connection, transaction));
+
+        }
+        private async Task<int> DeleteDocumentID(int shopId, SqlConnection connection, SqlTransaction transaction)
+        {
+            string queryStr = $"delete from DocumentMaxID where keyshopId={shopId}";
+            return await Task.Run(() => _dbHelper.ExecuteNonQuery(queryStr, connection, transaction));
+
+        }
+        private async Task<int> GetMaxDocumentNumber(int shopId, int documentTypeId, int documentMonth, int documentYear, SqlConnection connection, SqlTransaction transaction)
+        {
+            DataTable dt = new DataTable();
+            string queryStr = $"select case when  max(DocumentNumber) is null then 1 else max(DocumentNumber)+1 end MaxID from DocumentMaxNumber where ShopID={shopId} and documenttypeid={documentTypeId} and DocumentMonth={documentMonth} and DocumentYear={documentYear}";
+            dt = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connection, transaction));
+            int id = 1;
+            if (dt.Rows.Count > 0)
+            {
+                id = Convert.ToInt32(dt.Rows[0]["MaxID"]);
+            }
+            return id;
+        }
+        private async Task<int> CreateDocumentNumber(int shopId, int documentTypeId, int documentMonth, int documentYear, int documentNumber, SqlConnection connection, SqlTransaction transaction)
+        {
+            string queryStr = $"insert into DocumentMaxNumber(ShopID,DocumentTypeID,DocumentMonth,DocumentYear,DocumentNumber)values({shopId},{documentTypeId},{documentMonth},{documentYear},{documentNumber})";
+            return await Task.Run(() => _dbHelper.ExecuteNonQuery(queryStr, connection, transaction));
+
+        }
+        private async Task<int> DeleteDocumentNumber(int shopId, int documentTypeId, int documentMonth, int documentYear, SqlConnection connection, SqlTransaction transaction)
+        {
+            string queryStr = $"delete from DocumentMaxNumber where shopid={shopId} and documenttypeid={documentTypeId} and documentmonth={documentMonth} and documentyear={documentYear}";
+            return await Task.Run(() => _dbHelper.ExecuteNonQuery(queryStr, connection, transaction));
+
+        }
+        private async Task<int> GetMaxDocdetailID(int documentId, int keyShopId, SqlConnection connection, SqlTransaction transaction)
+        {
+            DataTable dt = new DataTable();
+            string queryStr = $"select case when  max(docdetailid) is null then 1 else max(docdetailid)+1 end docdetailid from docdetail where documentid={documentId} and keyshopid={keyShopId} ";
+            dt = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connString));
+            int id = 1;
+            if (dt.Rows.Count > 0)
+            {
+                id = Convert.ToInt32(dt.Rows[0]["docdetailid"]);
+            }
+            return id;
+        }
+        private async Task<int> GetInventoryID(string shopCode)
+        {
+            DataTable dt = new DataTable();
+            string queryStr = $"select * from shop_data where ShopCode='{shopCode}'";
+            dt = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connString));
+            int id = 0;
+            if (dt.Rows.Count > 0)
+            {
+                id = Convert.ToInt32(dt.Rows[0]["shopid"]);
+            }
+            return id;
+        }
+        private async Task<DataTable> GetDocumentType(int documentTypeId)
+        {
+            DataTable dt = new DataTable();
+            string queryStr = $"select * from documenttype where DocumentTypeID={documentTypeId}";
+            return dt = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connString));
+        }
+        private async Task<DataTable> GetDocumentHeader(string documentKey)
+        {
+            DataTable dtH = new DataTable();
+            string queryStr = $"select a.DocumentID,a.KeyShopID,a.DocumentKey,a.DocumentYear,a.DocumentMonth,a.DocumentNo,case when a.DocumentTypeID=3 and a.ShopID<>1 then a.DocumentNoRef else b.DocumentNoRef end As DocumentNoRef,a.DocumentTypeId,a.DocumentDate,c.StaffCode,a.remark,a.DueDate from document a left join document b on a.DocumentIDRef=b.DocumentID and a.DocIDRefShopID=b.KeyShopID left join staffs c on a.ApproveBy=c.StaffID  where a.DocumentStatus=2 and a.DocumentKey='{documentKey}'";
+            dtH = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connString));
+            dtH.TableName = "Header";
+            return dtH;
+        }
+        private async Task<DataTable> GetDocumentDetail(string documentKey)
+        {
+            DataTable dtL = new DataTable();
+
+            string queryStr = $"select d.ShopCode,e.VendorCode, a.DocumentID,a.KeyShopID,a.DocumentKey,b.DocumentKey As POKey,a.DocumentYear,a.DocumentMonth,a.DocumentNo, b.DocumentNoRef,case when a.DocumentTypeID=25 and (po.SupplierMaterialCode is null or po.SupplierMaterialCode='') then b.DocumentNoRef else po.SupplierMaterialCode end As SupplierMaterialCode,a.DocumentDate,c.DocDetailID,case when a.DocumentTypeID=3 then c.DocDetailID else '' end As RESITEMNO, c.ProductCode,c.ProductName,c.ProductAmount As Qty,c.UnitSmallAmount As SmallQty,c.UnitName,c.ProductPricePerUnit,c.ProductNetPrice,c.ProductTotalPrice,LineNumber,s1.ShopCode As ToShopCode,s2.ShopCode As FromShopCode,a.DueDate from document a left join document b on a.DocumentIDRef = b.DocumentID and a.DocIDRefShopID = b.KeyShopID join docdetail c on a.DocumentID = c.DocumentID and a.KeyShopID = c.KeyShopID join shop_data d on a.ShopID = d.ShopID left join vendors e on a.VendorID = e.VendorID left join interface_document_fromsap po on a.DocumentIDRef=po.DocumentID and a.DocIDRefShopID=po.KeyShopID and c.ProductID=po.ProductID left join shop_data s1 on a.ToInvID = s1.ShopID left join shop_data s2 on a.FromInvID = s2.ShopID  where a.DocumentStatus = 2  and a.DocumentKey='{documentKey}' order by DocDetailID";
+            dtL = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connString));
+            dtL.TableName = "Detail";
+            return dtL;
+        }
+        private async Task<DataTable> GetDocumentRODetail(string documentKey)
+        {
+            DataTable dtL = new DataTable();
+
+            string queryStr = $"select ROW_NUMBER() OVER (ORDER BY ro.DocDetailID) Row_num,ro.*,rq.DocumentNo As EBELN,rq.DocDetailID As EBELP,s.ShopID,s.ShopCode from (select a.DocumentID, a.KeyShopID, a.DocumentKey, a.DocIDRefShopID, a.DocumentIDRef, a.DocumentNo, a.DocumentNoRef, a.InvoiceRef, b.DocDetailID, b.ProductAmount, b.UnitSmallAmount as Qty, b.UnitName, b.ProductID, b.ProductCode, b.ProductName, a.DocumentDate, a.ShopID from document a inner join docdetail b on a.DocumentKey= b.DocumentKey where DocumentTypeID = 25  and DocumentStatus = 2) as ro join shop_data s on ro.ShopID = s.ShopID left join(select a.DocumentID, a.KeyShopID, a.DocumentKey, a.DocIDRefShopID, a.DocumentIDRef, a.DocumentNo, a.DocumentNoRef, a.InvoiceRef, b.DocDetailID, b.ProductAmount, b.UnitSmallAmount, b.UnitName, b.ProductID, b.ProductCode, b.ProductName, a.DocumentDate from document a inner join docdetail b on a.DocumentKey= b.DocumentKey where DocumentTypeID = 3  and DocumentStatus = 2) as wt on ro.DocumentIDRef = wt.documentid and ro.DocIDRefShopID = wt.KeyShopID and ro.ProductCode = wt.ProductCode left join (select a.DocumentID, a.KeyShopID, a.DocumentKey, a.DocIDRefShopID, a.DocumentIDRef, a.DocumentNo, a.DocumentNoRef, a.InvoiceRef, b.DocDetailID, b.ProductAmount, b.UnitSmallAmount, b.UnitName, b.ProductID, b.ProductCode, b.ProductName, a.DocumentDate from document a inner join docdetail b on a.DocumentKey= b.DocumentKey where DocumentTypeID = 17 and DocumentStatus = 2) as rq on wt.InvoiceRef = rq.DocumentNoRef and wt.ProductCode = rq.ProductCode where ro.DocumentKey = '{documentKey}' order by ro.DocDetailID";
+            dtL = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connString));
+            dtL.TableName = "Detail";
+            return dtL;
+        }
+        private async Task<DataTable> GetRequestDocument(string DocumentNoRef)
+        {
+            DataTable dtL = new DataTable();
+
+            string queryStr = $"select DocumentKey,DocumentNo,DocumentNoRef,InvoiceRef,DocumentDate from document where DocumentTypeID=17 and documentstatus=2  and DocumentNoRef in(select InvoiceRef from document where DocumentTypeID=3 and DocumentNoRef='{DocumentNoRef}')";
+            dtL = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connString));
+            dtL.TableName = "Detail";
+            return dtL;
+        }
+        private async Task<int> GetVendorID(string vendorCode)
+        {
+            DataTable dt = new DataTable();
+            string queryStr = $"select * from vendors where VendorCode='{vendorCode}'";
+            dt = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connString));
+            int id = 0;
+            if (dt.Rows.Count > 0)
+            {
+                id = Convert.ToInt32(dt.Rows[0]["vendorid"]);
+            }
+            return id;
+        }
+        private async Task<DataTable> CheckMaterial(string materialCode, string unitName, SqlConnection connection, SqlTransaction transaction)
+        {
+            DataTable dt = new DataTable();
+            string queryStr = $"select a.MaterialID,a.MaterialCode,a.MaterialName,b.UnitSmallID,d.UnitLargeID,d.UnitLargeName,c.UnitSmallRatio from materials a join unitsmall b on a.UnitSmallID=b.UnitSmallID join unitratio c on b.UnitSmallID=c.UnitSmallID join unitlarge d on c.UnitLargeID=d.UnitLargeID where a.MaterialCode='{materialCode}' and d.UnitLargeName='{unitName}'";
+            dt = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connection, transaction));
+
+            return dt;
+        }
+        private async Task<int> InsertDocumentHeader(int documentID, int keyShopID, string documentKey, int vendorID, int vendorGroupID, int documentTypeID, int documentYear, int documentMonth, int documentNumber, string documentNo, string documentNoRef, string documentDate, int shopID, int documentStatus, int documentIDRef, int docIDRefShopID, int toInvID, int fromInvID, decimal subTotal, decimal totalDiscount, decimal totalVAT, decimal netPrice, decimal grandTotal, string remark, int inputBy, int updateBy, int approveBy, int receiveBy, string insertDate, string updateDate, string approveDate, string dueDate, string invoicePODate, int vatPercent, SqlConnection connection, SqlTransaction transaction)
+        {
+            int id = 0;
+            string queryStr = $"insert into document (DocumentID,KeyShopID,DocumentKey,VendorID,VendorGroupID,DocumentTypeID,DocumentYear,DocumentMonth,DocumentNumber,DocumentNo,DocumentNoRef,DocumentDate,ShopID,DocumentStatus,DocumentIDRef,DocIDRefShopID,ToInvID,FromInvID,SubTotal,TotalDiscount,TotalVAT,NetPrice,GrandTotal,Remark,InputBy,UpdateBy,ApproveBy,ReceiveBy,InsertDate,UpdateDate,ApproveDate,DueDate,InvoicePODate,VATPercent) values({documentID},{keyShopID},'{documentKey}',{vendorID},{vendorGroupID},{documentTypeID},{documentYear},{documentMonth},{documentNumber},'{documentNo}','{documentNoRef}',{documentDate},{shopID},{documentStatus},{documentIDRef},{docIDRefShopID},{toInvID},{fromInvID},{subTotal},{totalDiscount},{totalVAT},{netPrice},{grandTotal},'{remark}',{inputBy},{updateBy},{approveBy},{receiveBy},{insertDate},{updateDate},{approveDate},{dueDate},{invoicePODate},{vatPercent});";
+            id = await Task.Run(() => _dbHelper.ExecuteNonQuery(queryStr, connection, transaction));
+            return id;
+        }
+        private async Task<int> InsertDocumentHeader(int documentID, int keyShopID, string documentKey, int vendorID, int vendorGroupID, int documentTypeID, int documentYear, int documentMonth, int documentNumber, string documentNo, string documentNoRef, string InvoiceRef, string documentDate, int shopID, int documentStatus, int documentIDRef, int docIDRefShopID, int toInvID, int fromInvID, decimal subTotal, decimal totalDiscount, decimal totalVAT, decimal netPrice, decimal grandTotal, string remark, int inputBy, int updateBy, int approveBy, int receiveBy, string insertDate, string updateDate, string approveDate, string dueDate, string invoicePODate, int vatPercent, SqlConnection connection, SqlTransaction transaction)
+        {
+            int id = 0;
+            string queryStr = $"insert into document (DocumentID,KeyShopID,DocumentKey,VendorID,VendorGroupID,DocumentTypeID,DocumentYear,DocumentMonth,DocumentNumber,DocumentNo,DocumentNoRef,InvoiceRef,DocumentDate,ShopID,DocumentStatus,DocumentIDRef,DocIDRefShopID,ToInvID,FromInvID,SubTotal,TotalDiscount,TotalVAT,NetPrice,GrandTotal,Remark,InputBy,UpdateBy,ApproveBy,ReceiveBy,InsertDate,UpdateDate,ApproveDate,DueDate,InvoicePODate,VATPercent) values({documentID},{keyShopID},'{documentKey}',{vendorID},{vendorGroupID},{documentTypeID},{documentYear},{documentMonth},{documentNumber},'{documentNo}','{documentNoRef}','{InvoiceRef}',{documentDate},{shopID},{documentStatus},{documentIDRef},{docIDRefShopID},{toInvID},{fromInvID},{subTotal},{totalDiscount},{totalVAT},{netPrice},{grandTotal},'{remark}',{inputBy},{updateBy},{approveBy},{receiveBy},{insertDate},{updateDate},{approveDate},{dueDate},{invoicePODate},{vatPercent});";
+            id = await Task.Run(() => _dbHelper.ExecuteNonQuery(queryStr, connection, transaction));
+            return id;
+        }
+        private async Task<int> InsertDocumentDetail(int docDetailID, int documentID, int keyShopID, string documentKey, string documentDate, int shopID, int productID, string productCode, string productName, string supplierMaterialCode, string supplierMaterialName, decimal productAmount, decimal productPricePerUnit, int discountType, decimal productDiscount, decimal discountAmount, decimal productDiscountAmount, decimal productNetPrice, int vatType, string vatCode, decimal productTax, decimal productTotalPrice, decimal unitSmallAmount, int unitSmallID, int unitLargeID, decimal unitRatio, int unitLargeRatio, string unitName, string remark, SqlConnection connection, SqlTransaction transaction)
+        {
+            int id = 0;
+            string queryStr = $"insert into docdetail (DocDetailID,DocumentID,KeyShopID,DocumentKey,DocumentDate,ShopID,ProductID,ProductCode,ProductName,SupplierMaterialCode,SupplierMaterialName,ProductAmount,ProductPricePerUnit ,DiscountType,ProductDiscount,DiscountAmount,ProductDiscountAmount,ProductNetPrice,VATType,VATCode,ProductTax,ProductTotalPrice,UnitSmallAmount,UnitSmallID,UnitLargeID,UnitRatio,UnitLargeRatio,UnitName,POAmount,POSmallAmount,IsDefault,DiscLevelDesc,Remark) values({docDetailID},{documentID},{keyShopID},'{documentKey}',{documentDate},{shopID},{productID},'{productCode}','{productName}','{supplierMaterialCode}','{supplierMaterialName}',{productAmount},{productPricePerUnit} ,{discountType},{productDiscount},{discountAmount},{productDiscountAmount},{productNetPrice},{vatType},'{vatCode}',{productTax},{productTotalPrice},{unitSmallAmount},{unitSmallID},{unitLargeID},{unitRatio},{unitLargeRatio},'{unitName}',{productAmount},{unitSmallAmount},1,0,'{remark}');";
+            id = await Task.Run(() => _dbHelper.ExecuteNonQuery(queryStr, connection, transaction));
+            return id;
+        }
+
+        #endregion
+    }
+
+}
