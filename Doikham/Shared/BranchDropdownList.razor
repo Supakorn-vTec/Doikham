@@ -1,0 +1,36 @@
+﻿@using Doikham.Shared.Database
+
+<div class="form-row">
+    <div class="col-md-12">
+        <select class="form-control" id="branch" @onchange="DoStuff">
+            @foreach (var data in shops)
+            {
+                <option value="@data.ShopID">@data.ShopCode&nbsp;:&nbsp;@data.ShopName</option>
+            }
+        </select>
+    </div>
+</div>
+@code {
+
+    [Parameter]
+    public List<ShopData> shops { get; set; }
+
+    [Parameter]
+    public EventCallback<int> Selected { get; set; }
+
+    public int selectedShop { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (shops.Count > 0)
+        {
+            selectedShop = shops.FirstOrDefault().ShopID;
+        }
+    }
+
+    public Task DoStuff(ChangeEventArgs e)
+    {
+        selectedShop = Convert.ToInt32(e.Value);
+        return Selected.InvokeAsync(selectedShop);
+    }
+}

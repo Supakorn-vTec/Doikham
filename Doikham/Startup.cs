@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Doikham.Data;
+using CurrieTechnologies.Razor.SweetAlert2;
 
 namespace Doikham
 {
@@ -28,7 +29,8 @@ namespace Doikham
         {
             services.AddRazorPages();
             services.AddServerSideBlazor();
-            services.AddSingleton<WeatherForecastService>();
+            services.AddHttpClient<Services>();
+            services.AddSweetAlert2();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

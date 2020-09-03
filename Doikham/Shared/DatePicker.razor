@@ -1,0 +1,95 @@
+﻿
+<div class="form-row">
+    <div class="col-md-12">
+        <table>
+            <tr>
+                <td>
+                    <select class="form-control" @onchange="ClickDay" id="@day">
+                        @for (int i = 1; i <= 31; i++)
+                        {
+                            <option value="@i" selected=@(Day == i)>@i</option>
+                        }
+                    </select>
+                </td>
+                <td>
+                    <select class="form-control" @onchange="ClickMonth" id="@month">
+                        @for (int i = 1; i <= 12; i++)
+                        {
+                            <option value="@i"  selected=@(Month == i)>@Months[i - 1]</option>
+                        }
+                    </select>
+                </td>
+                <td>
+                    <select class="form-control" @onchange="ClickYear" id="@year">
+                        @for (int i = DateTime.Now.Year - MinYear; i <= DateTime.Now.Year + MaxYear; i++)
+                        {
+                            <option value="@i"  selected=@(Year == i)>@i</option>
+                        }
+                    </select>
+                </td>
+            </tr>
+        </table>
+    </div>
+</div>
+@code {
+
+    [Parameter]
+    public DateTime InitialDate { get; set; }
+
+    [Parameter]
+    public string Id { get; set; }
+
+    [Parameter]
+    public EventCallback<DateTime> DateSeleted { get; set; }
+
+    [Parameter]
+    public int MinYear { get; set; }
+    [Parameter]
+    public int MaxYear { get; set; }
+
+
+    public int Day;
+    public int Month;
+    public int Year;
+
+    string day = "";
+    string month = "";
+    string year = "";
+    public string[] Months { get; set; } = { "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12" };
+
+    protected override void OnInitialized()
+    {
+
+        day = $"ddlday{Id}";
+        month = $"ddlmonth{Id}";
+        year = $"ddlyear{Id}";
+
+        if (MinYear == 0)
+            MinYear = 80;
+        if (MaxYear == 0)
+            MaxYear = 5;
+
+        Day = InitialDate.Day;
+        Month = InitialDate.Month;
+        Year = InitialDate.Year;
+    }
+
+    public Task ClickYear(ChangeEventArgs e)
+    {
+        Year = Convert.ToInt32(e.Value);
+        DateTime dt = new DateTime(Year, Month, Day);
+        return DateSeleted.InvokeAsync(dt);
+    }
+    public Task ClickMonth(ChangeEventArgs e)
+    {
+        Month = Convert.ToInt32(e.Value);
+        DateTime dt = new DateTime(Year, Month, Day);
+        return DateSeleted.InvokeAsync(dt);
+    }
+    public Task ClickDay(ChangeEventArgs e)
+    {
+        Day = Convert.ToInt32(e.Value);
+        DateTime dt = new DateTime(Year, Month, Day);
+        return DateSeleted.InvokeAsync(dt);
+    }
+}

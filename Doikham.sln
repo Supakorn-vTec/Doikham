@@ -3,11 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29806.167
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Doikham", "Doikham\Doikham.csproj", "{D7236F86-D840-4CCF-90E0-5F2EB4E63BB7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Doikham.API", "Doikham.API\Doikham.API.csproj", "{E939E57C-490C-4B17-AA4B-B4F069BF3632}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Doikham.API", "Doikham.API\Doikham.API.csproj", "{E939E57C-490C-4B17-AA4B-B4F069BF3632}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Doikham.Shared", "Doikham.Shared\Doikham.Shared.csproj", "{EF685293-97BB-4D3D-9366-CAB4F8FBD0FF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Doikham.Shared", "Doikham.Shared\Doikham.Shared.csproj", "{EF685293-97BB-4D3D-9366-CAB4F8FBD0FF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Doikham", "Doikham\Doikham.csproj", "{4D730CB3-FC5D-470A-B70D-507364ABC036}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,10 +15,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{D7236F86-D840-4CCF-90E0-5F2EB4E63BB7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D7236F86-D840-4CCF-90E0-5F2EB4E63BB7}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D7236F86-D840-4CCF-90E0-5F2EB4E63BB7}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D7236F86-D840-4CCF-90E0-5F2EB4E63BB7}.Release|Any CPU.Build.0 = Release|Any CPU
 		{E939E57C-490C-4B17-AA4B-B4F069BF3632}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{E939E57C-490C-4B17-AA4B-B4F069BF3632}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E939E57C-490C-4B17-AA4B-B4F069BF3632}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -27,6 +23,10 @@ Global
 		{EF685293-97BB-4D3D-9366-CAB4F8FBD0FF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EF685293-97BB-4D3D-9366-CAB4F8FBD0FF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EF685293-97BB-4D3D-9366-CAB4F8FBD0FF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4D730CB3-FC5D-470A-B70D-507364ABC036}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4D730CB3-FC5D-470A-B70D-507364ABC036}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4D730CB3-FC5D-470A-B70D-507364ABC036}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4D730CB3-FC5D-470A-B70D-507364ABC036}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

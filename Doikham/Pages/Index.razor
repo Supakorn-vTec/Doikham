@@ -1,5 +1,213 @@
 ﻿@page "/"
 
-<h1>Hello, world!</h1>
+@using System.Globalization
+@using Doikham.Data
+@using Doikham.Shared.Database
+@using CurrieTechnologies.Razor.SweetAlert2
 
-Welcome to your new app.
+@inject Services Service
+@inject SweetAlertService Swal
+
+<style>
+    textarea {
+        width: 100%;
+        font-family: "Lucida Console", Monaco, monospace;
+        font-size: 0.8rem;
+        line-height: 1.2;
+        padding: 12px 8px;
+        background-color: #eff0f1;
+        border-radius: 3px;
+    }
+
+    tr {
+        cursor: pointer;
+    }
+</style>
+<div class="table-responsive" style="font-size:12px; margin:2rem;">
+
+    <p>
+        <center>
+            <h3>POS Interface Logs</h3>
+        </center>
+    </p>
+    <p>
+        <table style="padding:2rem;">
+            <tr>
+                <td>Branch:<BranchDropdownList shops="shops" Selected="SelectShop"></BranchDropdownList></td>
+                <td>FromDate:<DatePicker Id="fromdate" InitialDate="initialDate" DateSeleted="SelectFromDate"></DatePicker></td>
+            </tr>
+            <tr>
+                <td>DocType:<DocumentTypeDropdownList doctypes="docTypes" Selected="SelectDocType"></DocumentTypeDropdownList></td>
+                <td>ToDate:<DatePicker Id="todate" InitialDate="initialDate" DateSeleted="SelectToDate"></DatePicker></td>
+            </tr>
+        </table>
+
+    </p>
+    <p>
+        <button type="button" class="btn btn-primary" @onclick="@(() => DoSearch())">Click Search</button>
+    </p>
+    <table class="table">
+        <tr>
+            <th colspan="4">POS</th>
+            <th colspan="2">SAP</th>
+        </tr>
+        <tr>
+            <th>DocNo</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th>TimeStamp</th>
+            <th>Status</th>
+            <th>TimeStamp</th>
+           
+        </tr>
+        @if (logs.Count > 0)
+        {
+            @foreach (var data in logs.OrderBy(p => p.DocDate))
+            {
+                string bg = "white;";
+                @if (string.IsNullOrEmpty(data.ResStatus))
+                {
+                    bg = "#FFBD33; color:white;";
+                }
+                <tr @onclick="@(() => ViewDetails(data))" style="background-color:@bg">
+                    <td>@data.DocumentNo</td>
+                    <td>@data.DocDate</td>
+                    <td>@data.StatusCode</td>
+                    <td>@data.DateTimeStamp</td>
+                    <td>@data.ResStatus</td>
+                    <td>@data.ResDatetimeStamp</td>
+                    
+                </tr>
+            }
+        }
+        else
+        {
+            <tr>
+                <td colspan="6">No data.</td>
+            </tr>
+        }
+    </table>
+    @if (showDetail)
+    {
+        <p>
+            <strong>DocNo. @interfaceLog.DocumentNo</strong>
+            <textarea name="" rows="15">@interfaceLog.MsgLog</textarea>
+        </p>
+        <p>
+            <strong>SAP Reponse</strong>
+            <textarea name="" rows="10"> @interfaceLog.ResMsgLog</textarea>
+        </p>
+        <button type="button" class="btn btn-primary btn-sm" @onclick="@(() => DeleteLog())">Resend Data To SAP</button>
+    }
+</div>
+
+
+@code  {
+
+    List<ShopData> shops = new List<ShopData>();
+    ResultShopData resultData = new ResultShopData();
+
+    List<InterfaceLog> logs = new List<InterfaceLog>();
+    ResultInterfaceData interfaceData = new ResultInterfaceData();
+
+    List<DocTypeData> docTypes = new List<DocTypeData>();
+    ResultDoctypeData resultDoctypeData = new ResultDoctypeData();
+
+
+    int shopId = 0;
+    int doctypeId = 0;
+    DateTime fromDate = DateTime.Now;
+    DateTime toDate = DateTime.Now;
+
+    DateTime initialDate;
+    bool showDetail;
+
+    public InterfaceLog interfaceLog { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        initialDate = DateTime.Now;
+        resultData = await Service.Shops();
+        if (string.IsNullOrEmpty(resultData.ReponseCode))
+        {
+            shops = resultData.Data;
+            shopId = shops.FirstOrDefault().ShopID;
+        }
+
+        resultDoctypeData = await Service.DocTypes();
+        if (string.IsNullOrEmpty(resultDoctypeData.ReponseCode))
+        {
+            docTypes = resultDoctypeData.Data;
+            doctypeId = (int)docTypes.FirstOrDefault().DocumentTypeID;
+        }
+
+    }
+
+    async void DoSearch()
+    {
+        CriteriaData param = new CriteriaData();
+        param.ShopID = shopId;
+        param.DocType = doctypeId;
+        param.FromDate = fromDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        param.ToDate = toDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        interfaceData = await Service.InfaceData(param);
+        if (string.IsNullOrEmpty(interfaceData.ReponseCode))
+        {
+            logs = interfaceData.Data;
+        }
+        showDetail = false;
+        this.StateHasChanged();
+    }
+
+    void SelectShop(int Id)
+    {
+        shopId = Id;
+    }
+
+    void SelectDocType(int Id)
+    {
+        doctypeId = Id;
+    }
+
+    void SelectFromDate(DateTime date)
+    {
+        fromDate = date;
+    }
+
+    void SelectToDate(DateTime date)
+    {
+        toDate = date;
+    }
+
+    void ViewDetails(InterfaceLog log)
+    {
+        showDetail = true;
+        interfaceLog = log;
+        this.StateHasChanged();
+    }
+
+    async Task DeleteLog()
+    {
+        SweetAlertResult result = await Swal.FireAsync(new SweetAlertOptions
+        {
+            Title = "แจ้งเตือน",
+            Text = $"คุณต้องการส่งข้อมูลเอกสารเลขที่ {interfaceLog.DocumentNo} นี้ให้ SAP ใหม่ใช่หรือไม่?",
+            ShowCancelButton = true,
+            ConfirmButtonText = "ใช่",
+            CancelButtonText = "ไม่ใช่"
+        });
+        if (!string.IsNullOrEmpty(result.Value))
+        {
+            ActionResultData resultData = await Service.ResendData(interfaceLog.UUID);
+            if (string.IsNullOrEmpty(resultData.ReponseCode))
+            {
+                await Swal.FireAsync("ดำเนินการ Reset log เรียบร้อยแล้ว");
+            }
+            else
+            {
+                await Swal.FireAsync(resultData.ResponseText);
+            }
+        }
+    }
+}
+

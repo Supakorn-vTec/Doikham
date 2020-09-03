@@ -1,0 +1,36 @@
+﻿@using Doikham.Shared.Database
+
+<div class="form-row">
+    <div class="col-md-12">
+        <select class="form-control" id="doctype" @onchange="DoStuff">
+            @foreach (var data in doctypes)
+            {
+                <option value="@data.DocumentTypeID">@data.DocumentTypeHeader&nbsp;:&nbsp;@data.DocumentTypeName</option>
+            }
+        </select>
+    </div>
+</div>
+@code {
+
+    [Parameter]
+    public List<DocTypeData> doctypes { get; set; }
+
+    [Parameter]
+    public EventCallback<int> Selected { get; set; }
+
+    public int selectedDocType { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (doctypes.Count > 0)
+        {
+            selectedDocType = (int)doctypes.FirstOrDefault().DocumentTypeID;
+        }
+    }
+
+    public Task DoStuff(ChangeEventArgs e)
+    {
+        selectedDocType = Convert.ToInt32(e.Value);
+        return Selected.InvokeAsync(selectedDocType);
+    }
+}

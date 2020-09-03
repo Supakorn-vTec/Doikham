@@ -123,8 +123,8 @@ namespace Doikham.API.Data
                                  MAKTX = dr["ProductName"].ToString(),
                                  WERKS = dr["ShopCode"].ToString(),
                                  SUPPLANT = dr["ToShopCode"].ToString(),
-                                 MENGE = dr["Qty"].ToString(),
-                                 MEINS = dr["UnitName"].ToString(),
+                                 MENGE = dr["SmallQty"].ToString(),
+                                 MEINS = dr["SmallUnitName"].ToString(),
                                  DELDATE = Convert.ToDateTime(dr["DueDate"]).ToString("yyyyMMdd", invC),
                                  SGTXT = "",
                              }).ToList();
@@ -221,6 +221,11 @@ namespace Doikham.API.Data
                         documentNoRef = data.HEADER.MBLNR;
                         invoiceRef = data.HEADER.ITEMS[0].EBELN;
 
+                        DataTable dtRQRef = await GetRequestDocumentRef(invoiceRef);
+                        if (dtRQRef.Rows.Count > 0)
+                        {
+                            shopId = Convert.ToInt32(dtRQRef.Rows[0]["ToInvID"]);
+                        }
                         await Task.Run(() => InsertDocumentHeader(documentId, keyShopId, documentKey, vendorId, vendorGroupId, documentTypeId, documentYear, documentMonth, documentNumber, documentNo, documentNoRef, invoiceRef, documentDate, shopId, documentStatus, documentIdRef, docIdRefShopId, toShopId, fromShopId, subTotal, totalDiscount, totalVAT, netPrice, grandTotal, data.HEADER.BKTXT, staffId, staffId, staffId, 0, timeStamp, timeStamp, timeStamp, dueDate, invoicePODate, vatPercent, connection, transaction));
 
                         docdetailId = await Task.Run(() => GetMaxDocdetailID(documentId, keyShopId, connection, transaction));
@@ -266,8 +271,19 @@ namespace Doikham.API.Data
                                 unitsmallQty = (materialQty * unitlargeRatio);
                                 docdetailId = Convert.ToInt32(data.HEADER.ITEMS[i].EBELP);
 
-                                await Task.Run(() => InsertDocumentDetail(docdetailId, documentId, keyShopId, documentKey, documentDate, shopId, materialId, materialCode, materialName, supplierMaterialCode, supplierMaterialName, materialQty, pricePerUnit, discountType, percentDiscount, amountDiscount, totalDiscount, netPrice, vatType, vatCode, totalVat, totalPrice, unitsmallQty, unitsmallId, unitlargeId, unitratio, unitlargeRatio, unitName, remarkLine, connection, transaction));
+                              DataTable  dtCheck=  await Task.Run(() => CheckDoDocDetailID(documentId,keyShopId, docdetailId,connection, transaction));
 
+                                if (dtCheck.Rows.Count > 0)
+                                {
+                                    decimal xQty = Convert.ToDecimal( dtCheck.Rows[0]["ProductAmount"]);
+                                    materialQty = (materialQty + xQty);
+                                    unitsmallQty = (materialQty * unitlargeRatio);
+                                    await Task.Run(() => UpdateDocumentDetail(docdetailId, documentId, keyShopId, materialQty, unitsmallQty, connection, transaction));
+                                }
+                                else
+                                {
+                                    await Task.Run(() => InsertDocumentDetail(docdetailId, documentId, keyShopId, documentKey, documentDate, shopId, materialId, materialCode, materialName, supplierMaterialCode, supplierMaterialName, materialQty, pricePerUnit, discountType, percentDiscount, amountDiscount, totalDiscount, netPrice, vatType, vatCode, totalVat, totalPrice, unitsmallQty, unitsmallId, unitlargeId, unitratio, unitlargeRatio, unitName, remarkLine, connection, transaction));
+                                }
                             }
                             docdetailId += docdetailId;
                         }
@@ -320,8 +336,8 @@ namespace Doikham.API.Data
                                  WERKS = dr["ShopCode"].ToString(),
                                  LIFNR = "",
                                  SWERKS = dr["ShopCode"].ToString(),
-                                 MENGE = dr["Qty"].ToString(),
-                                 MEINS = dr["UnitName"].ToString(),
+                                 MENGE = dr["SmallQty"].ToString(),
+                                 MEINS = dr["SmallUnitName"].ToString(),
                                  NETPR = "0.00",
                                  NETWR ="0.00",
                                  EBELN = dr["EBELN"].ToString(),
@@ -574,8 +590,8 @@ namespace Doikham.API.Data
                                  WERKS = dr["ShopCode"].ToString(),
                                  LIFNR = dr["VendorCode"].ToString(),
                                  SWERKS = dr["ShopCode"].ToString(),
-                                 MENGE = dr["Qty"].ToString(),
-                                 MEINS = dr["UnitName"].ToString(),
+                                 MENGE = dr["SmallQty"].ToString(),
+                                 MEINS = dr["SmallUnitName"].ToString(),
                                  NETPR = dr["ProductPricePerUnit"].ToString(),
                                  NETWR = dr["ProductTotalPrice"].ToString(),
                                  EBELN = dr["DocumentNoRef"].ToString(),
@@ -689,6 +705,12 @@ namespace Doikham.API.Data
             string queryStr = $"select * from documenttype where DocumentTypeID={documentTypeId}";
             return dt = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connString));
         }
+        private async Task<DataTable> GetRequestDocumentRef(string invoiceRef)
+        {
+            DataTable dt = new DataTable();
+            string queryStr = $"select * from document  where DocumentTypeID=17 and DocumentNoRef='{invoiceRef}'";
+            return dt = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connString));
+        }
         private async Task<DataTable> GetDocumentHeader(string documentKey)
         {
             DataTable dtH = new DataTable();
@@ -701,7 +723,7 @@ namespace Doikham.API.Data
         {
             DataTable dtL = new DataTable();
 
-            string queryStr = $"select d.ShopCode,e.VendorCode, a.DocumentID,a.KeyShopID,a.DocumentKey,b.DocumentKey As POKey,a.DocumentYear,a.DocumentMonth,a.DocumentNo, b.DocumentNoRef,case when a.DocumentTypeID=25 and (po.SupplierMaterialCode is null or po.SupplierMaterialCode='') then b.DocumentNoRef else po.SupplierMaterialCode end As SupplierMaterialCode,a.DocumentDate,c.DocDetailID,case when a.DocumentTypeID=3 then c.DocDetailID else '' end As RESITEMNO, c.ProductCode,c.ProductName,c.ProductAmount As Qty,c.UnitSmallAmount As SmallQty,c.UnitName,c.ProductPricePerUnit,c.ProductNetPrice,c.ProductTotalPrice,LineNumber,s1.ShopCode As ToShopCode,s2.ShopCode As FromShopCode,a.DueDate from document a left join document b on a.DocumentIDRef = b.DocumentID and a.DocIDRefShopID = b.KeyShopID join docdetail c on a.DocumentID = c.DocumentID and a.KeyShopID = c.KeyShopID join shop_data d on a.ShopID = d.ShopID left join vendors e on a.VendorID = e.VendorID left join interface_document_fromsap po on a.DocumentIDRef=po.DocumentID and a.DocIDRefShopID=po.KeyShopID and c.ProductID=po.ProductID left join shop_data s1 on a.ToInvID = s1.ShopID left join shop_data s2 on a.FromInvID = s2.ShopID  where a.DocumentStatus = 2  and a.DocumentKey='{documentKey}' order by DocDetailID";
+            string queryStr = $"select d.ShopCode,e.VendorCode, a.DocumentID,a.KeyShopID,a.DocumentKey,b.DocumentKey As POKey,a.DocumentYear,a.DocumentMonth,a.DocumentNo, b.DocumentNoRef,case when a.DocumentTypeID=25 and (po.SupplierMaterialCode is null or po.SupplierMaterialCode='') then b.DocumentNoRef else po.SupplierMaterialCode end As SupplierMaterialCode,a.DocumentDate,c.DocDetailID,case when a.DocumentTypeID=3 then c.DocDetailID else '' end As RESITEMNO, c.ProductCode,c.ProductName,c.ProductAmount As Qty,c.UnitSmallAmount As SmallQty,c.UnitName, 'EA' As SmallUnitName,c.ProductPricePerUnit,c.ProductNetPrice,c.ProductTotalPrice,LineNumber,s1.ShopCode As ToShopCode,s2.ShopCode As FromShopCode,a.DueDate from document a left join document b on a.DocumentIDRef = b.DocumentID and a.DocIDRefShopID = b.KeyShopID join docdetail c on a.DocumentID = c.DocumentID and a.KeyShopID = c.KeyShopID join shop_data d on a.ShopID = d.ShopID left join vendors e on a.VendorID = e.VendorID left join interface_document_fromsap po on a.DocumentIDRef=po.DocumentID and a.DocIDRefShopID=po.KeyShopID and c.ProductID=po.ProductID left join shop_data s1 on a.ToInvID = s1.ShopID left join shop_data s2 on a.FromInvID = s2.ShopID  where a.DocumentStatus = 2  and a.DocumentKey='{documentKey}' order by DocDetailID";
             dtL = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connString));
             dtL.TableName = "Detail";
             return dtL;
@@ -744,6 +766,14 @@ namespace Doikham.API.Data
 
             return dt;
         }
+        private async Task<DataTable> CheckDoDocDetailID( int DocumentId, int KeyShopId, int DocDetailID,  SqlConnection connection, SqlTransaction transaction)
+        {
+            DataTable dt = new DataTable();
+            string queryStr = $"select * from docdetail where DocumentID={DocumentId} and keyshopId={KeyShopId} and DocDetailID={DocDetailID}";
+            dt = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connection, transaction));
+
+            return dt;
+        }
         private async Task<int> InsertDocumentHeader(int documentID, int keyShopID, string documentKey, int vendorID, int vendorGroupID, int documentTypeID, int documentYear, int documentMonth, int documentNumber, string documentNo, string documentNoRef, string documentDate, int shopID, int documentStatus, int documentIDRef, int docIDRefShopID, int toInvID, int fromInvID, decimal subTotal, decimal totalDiscount, decimal totalVAT, decimal netPrice, decimal grandTotal, string remark, int inputBy, int updateBy, int approveBy, int receiveBy, string insertDate, string updateDate, string approveDate, string dueDate, string invoicePODate, int vatPercent, SqlConnection connection, SqlTransaction transaction)
         {
             int id = 0;
@@ -762,6 +792,14 @@ namespace Doikham.API.Data
         {
             int id = 0;
             string queryStr = $"insert into docdetail (DocDetailID,DocumentID,KeyShopID,DocumentKey,DocumentDate,ShopID,ProductID,ProductCode,ProductName,SupplierMaterialCode,SupplierMaterialName,ProductAmount,ProductPricePerUnit ,DiscountType,ProductDiscount,DiscountAmount,ProductDiscountAmount,ProductNetPrice,VATType,VATCode,ProductTax,ProductTotalPrice,UnitSmallAmount,UnitSmallID,UnitLargeID,UnitRatio,UnitLargeRatio,UnitName,POAmount,POSmallAmount,IsDefault,DiscLevelDesc,Remark) values({docDetailID},{documentID},{keyShopID},'{documentKey}',{documentDate},{shopID},{productID},'{productCode}','{productName}','{supplierMaterialCode}','{supplierMaterialName}',{productAmount},{productPricePerUnit} ,{discountType},{productDiscount},{discountAmount},{productDiscountAmount},{productNetPrice},{vatType},'{vatCode}',{productTax},{productTotalPrice},{unitSmallAmount},{unitSmallID},{unitLargeID},{unitRatio},{unitLargeRatio},'{unitName}',{productAmount},{unitSmallAmount},1,0,'{remark}');";
+            id = await Task.Run(() => _dbHelper.ExecuteNonQuery(queryStr, connection, transaction));
+            return id;
+        }
+
+        private async Task<int> UpdateDocumentDetail(int docDetailID, int documentID, int keyShopID,   decimal productAmount,   decimal unitSmallAmount,SqlConnection connection, SqlTransaction transaction)
+        {
+            int id = 0;
+            string queryStr = $"update docdetail set ProductAmount={productAmount}, UnitSmallAmount={unitSmallAmount} where docdetailid={docDetailID} and documentid={documentID} and keyshopid={keyShopID}; ";
             id = await Task.Run(() => _dbHelper.ExecuteNonQuery(queryStr, connection, transaction));
             return id;
         }

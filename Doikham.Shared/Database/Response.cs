@@ -15,4 +15,24 @@ namespace Doikham.Shared.Database
         public string MESSAGE { get; set; }
         public string PIMSGID { get; set; }
     }
+
+    public class ActionResultData
+    {
+        public string ReponseCode { get; set; } = "";
+        public string ResponseText { get; set; } = "";
+    }
+
+    public class ResultShopData : ActionResultData
+    {
+        public List<ShopData> Data { get; set; }
+    }
+
+    public class ResultDoctypeData : ActionResultData
+    {
+        public List<DocTypeData> Data { get; set; }
+    }
+    public class ResultInterfaceData : ActionResultData
+    {
+        public List<InterfaceLog> Data { get; set; }
+    }
 }

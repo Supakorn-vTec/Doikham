@@ -29,6 +29,8 @@ namespace Doikham.API
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddRazorPages();
+            services.AddServerSideBlazor();
             services.AddControllers().AddNewtonsoftJson(options =>
             {
                 options.SerializerSettings.ContractResolver = new DefaultContractResolver();
@@ -39,6 +41,7 @@ namespace Doikham.API
             services.AddSingleton<ISAP, SAP>();
             services.AddSingleton<ISales, Sales>();
             services.AddSingleton<IPOSLog, POSLog>();
+            services.AddSingleton<ILib, Lib>();
 
             bool EnableService = false;
             EnableService = Convert.ToBoolean(Configuration.GetSection("VTECApi")["EnableService"]);
@@ -59,6 +62,12 @@ namespace Doikham.API
             {
                 app.UseDeveloperExceptionPage();
             }
+            else
+            {
+                app.UseExceptionHandler("/Error");
+                app.UseHsts();
+            }
+
             app.UseSwagger();
             app.UseSwaggerUI(c =>
             {

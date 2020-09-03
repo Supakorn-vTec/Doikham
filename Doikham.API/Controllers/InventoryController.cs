@@ -461,8 +461,6 @@ namespace Doikham.API.Controllers
             }
         }
 
-
-
         public T ToObject<T>(string node, string json)
         {
             T data;
