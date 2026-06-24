@@ -4,6 +4,9 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <UserSecretsId>4c650daf-ddba-4e65-bf29-1f9ce1d4a575</UserSecretsId>
     <DockerDefaultTargetOS>Windows</DockerDefaultTargetOS>
+    <PackageId>Doikham.API</PackageId>
+    <Authors>Doikham.API</Authors>
+    <Product>Doikham.API</Product>
   </PropertyGroup>
 
   <ItemGroup>

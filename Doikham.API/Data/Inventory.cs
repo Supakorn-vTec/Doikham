@@ -20,6 +20,8 @@ namespace Doikham.API.Data
         public Task<bool> TransferOrderAsync(GOODISSUEOUTDOCUMENT issueData);
         public Task<GOODRECEIPTDOCUMENT> TransferOrderReciptAsync(string documentKey);
         public Task<GOODISSUEINDOCUMENT> AdjustOrderAsync(string documentKey, string docTypeCode);
+        public Task<GOODISSUEINDOCUMENT> SalesOrderAsync(string documentKey, string docTypeCode, string shopCoe);
+ 
 
     }
     public class Inventory : IInventory
@@ -38,7 +40,9 @@ namespace Doikham.API.Data
             invC = new CultureInfo("en-US");
         }
 
+        #region "Sales Order"
 
+        #endregion
         #region "Adjust Order"
         public async Task<GOODISSUEINDOCUMENT> AdjustOrderAsync(string documentKey, string docTypeCode)
         {
@@ -205,7 +209,7 @@ namespace Doikham.API.Data
                         int vatPercent = 7;
 
                         DateTime syncDate = DateTime.Now;
-                        string docDate = syncDate.ToString("yyyy-MM-dd");
+                        string docDate = syncDate.ToString("yyyy-MM-dd",invC);
                         documentYear = syncDate.Year;
                         documentMonth = syncDate.Month;
                         documentDay = syncDate.Day;
@@ -225,69 +229,74 @@ namespace Doikham.API.Data
                         if (dtRQRef.Rows.Count > 0)
                         {
                             shopId = Convert.ToInt32(dtRQRef.Rows[0]["ToInvID"]);
+                            documentIdRef = Convert.ToInt32(dtRQRef.Rows[0]["documentid"]);
+                            docIdRefShopId = Convert.ToInt32(dtRQRef.Rows[0]["keyshopid"]);
                         }
-                        await Task.Run(() => InsertDocumentHeader(documentId, keyShopId, documentKey, vendorId, vendorGroupId, documentTypeId, documentYear, documentMonth, documentNumber, documentNo, documentNoRef, invoiceRef, documentDate, shopId, documentStatus, documentIdRef, docIdRefShopId, toShopId, fromShopId, subTotal, totalDiscount, totalVAT, netPrice, grandTotal, data.HEADER.BKTXT, staffId, staffId, staffId, 0, timeStamp, timeStamp, timeStamp, dueDate, invoicePODate, vatPercent, connection, transaction));
-
-                        docdetailId = await Task.Run(() => GetMaxDocdetailID(documentId, keyShopId, connection, transaction));
-
-                        for (int i = 0; i < data.HEADER.ITEMS.Count; i++)
+                        DataTable dtValidate = await ValidateStoreSAP(shopId);
+                        if (dtValidate.Rows.Count > 0)
                         {
-                            int materialId = 0;
-                            string materialCode = "";
-                            string materialName = "";
-                            string unitName = "";
-                            decimal materialQty = 0;
-                            int unitsmallId = 0;
-                            int unitlargeId = 0;
-                            int unitlargeRatio = 1;
-                            decimal unitratio = 0;
-                            decimal pricePerUnit = 0;
-                            int discountType = 0;
-                            decimal percentDiscount = 0;
-                            decimal amountDiscount = 0;
-                            int vatType = 0;
-                            string vatCode = "N";
-                            decimal totalVat = 0;
-                            decimal totalPrice = 0;
-                            decimal unitsmallQty = 0;
-                            string supplierMaterialCode = "";
-                            string supplierMaterialName = "";
-                            string remarkLine = "";
-                            DataTable dt = new DataTable();
+                            await Task.Run(() => InsertDocumentHeader(documentId, keyShopId, documentKey, vendorId, vendorGroupId, documentTypeId, documentYear, documentMonth, documentNumber, documentNo, documentNoRef, invoiceRef, documentDate, shopId, documentStatus, documentIdRef, docIdRefShopId, toShopId, fromShopId, subTotal, totalDiscount, totalVAT, netPrice, grandTotal, data.HEADER.BKTXT, staffId, staffId, staffId, 0, timeStamp, timeStamp, timeStamp, dueDate, invoicePODate, vatPercent, connection, transaction));
 
-                            dt = await Task.Run(() => CheckMaterial(data.HEADER.ITEMS[i].MATNR, data.HEADER.ITEMS[i].MEINS, connection, transaction));
+                            docdetailId = await Task.Run(() => GetMaxDocdetailID(documentId, keyShopId, connection, transaction));
 
-                            if (dt.Rows.Count > 0)
+                            for (int i = 0; i < data.HEADER.ITEMS.Count; i++)
                             {
-                                materialId = Convert.ToInt32(dt.Rows[0]["materialid"]);
-                                materialCode = data.HEADER.ITEMS[i].MATNR;
-                                materialName = dt.Rows[0]["materialname"].ToString();
-                                supplierMaterialCode = data.HEADER.ITEMS[i].EBELN;
-                                unitName = data.HEADER.ITEMS[i].MEINS;
-                                materialQty = Convert.ToDecimal(data.HEADER.ITEMS[i].MENGE);
-                                unitsmallId = Convert.ToInt32(dt.Rows[0]["unitsmallId"]);
-                                unitlargeId = Convert.ToInt32(dt.Rows[0]["unitlargeId"]);
-                                unitratio = Convert.ToDecimal(dt.Rows[0]["UnitSmallRatio"]);
-                                unitsmallQty = (materialQty * unitlargeRatio);
-                                docdetailId = Convert.ToInt32(data.HEADER.ITEMS[i].EBELP);
+                                int materialId = 0;
+                                string materialCode = "";
+                                string materialName = "";
+                                string unitName = "";
+                                decimal materialQty = 0;
+                                int unitsmallId = 0;
+                                int unitlargeId = 0;
+                                int unitlargeRatio = 1;
+                                decimal unitratio = 0;
+                                decimal pricePerUnit = 0;
+                                int discountType = 0;
+                                decimal percentDiscount = 0;
+                                decimal amountDiscount = 0;
+                                int vatType = 0;
+                                string vatCode = "N";
+                                decimal totalVat = 0;
+                                decimal totalPrice = 0;
+                                decimal unitsmallQty = 0;
+                                string supplierMaterialCode = "";
+                                string supplierMaterialName = "";
+                                string remarkLine = "";
+                                DataTable dt = new DataTable();
 
-                              DataTable  dtCheck=  await Task.Run(() => CheckDoDocDetailID(documentId,keyShopId, docdetailId,connection, transaction));
+                                dt = await Task.Run(() => CheckMaterial(data.HEADER.ITEMS[i].MATNR, data.HEADER.ITEMS[i].MEINS, connection, transaction));
 
-                                if (dtCheck.Rows.Count > 0)
+                                if (dt.Rows.Count > 0)
                                 {
-                                    decimal xQty = Convert.ToDecimal( dtCheck.Rows[0]["ProductAmount"]);
-                                    materialQty = (materialQty + xQty);
+                                    materialId = Convert.ToInt32(dt.Rows[0]["materialid"]);
+                                    materialCode = data.HEADER.ITEMS[i].MATNR;
+                                    materialName = dt.Rows[0]["materialname"].ToString();
+                                    supplierMaterialCode = data.HEADER.ITEMS[i].EBELN;
+                                    unitName = data.HEADER.ITEMS[i].MEINS;
+                                    materialQty = Convert.ToDecimal(data.HEADER.ITEMS[i].MENGE);
+                                    unitsmallId = Convert.ToInt32(dt.Rows[0]["unitsmallId"]);
+                                    unitlargeId = Convert.ToInt32(dt.Rows[0]["unitlargeId"]);
+                                    unitratio = Convert.ToDecimal(dt.Rows[0]["UnitSmallRatio"]);
                                     unitsmallQty = (materialQty * unitlargeRatio);
-                                    await Task.Run(() => UpdateDocumentDetail(docdetailId, documentId, keyShopId, materialQty, unitsmallQty, connection, transaction));
-                                }
-                                else
-                                {
-                                    await Task.Run(() => InsertDocumentDetail(docdetailId, documentId, keyShopId, documentKey, documentDate, shopId, materialId, materialCode, materialName, supplierMaterialCode, supplierMaterialName, materialQty, pricePerUnit, discountType, percentDiscount, amountDiscount, totalDiscount, netPrice, vatType, vatCode, totalVat, totalPrice, unitsmallQty, unitsmallId, unitlargeId, unitratio, unitlargeRatio, unitName, remarkLine, connection, transaction));
-                                }
-                            }
-                            docdetailId += docdetailId;
-                        }
+                                    docdetailId = Convert.ToInt32(data.HEADER.ITEMS[i].EBELP);
 
+                                    DataTable dtCheck = await Task.Run(() => CheckDoDocDetailID(documentId, keyShopId, docdetailId, connection, transaction));
+
+                                    if (dtCheck.Rows.Count > 0)
+                                    {
+                                        decimal xQty = Convert.ToDecimal(dtCheck.Rows[0]["ProductAmount"]);
+                                        materialQty = (materialQty + xQty);
+                                        unitsmallQty = (materialQty * unitlargeRatio);
+                                        await Task.Run(() => UpdateDocumentDetail(docdetailId, documentId, keyShopId, materialQty, unitsmallQty, connection, transaction));
+                                    }
+                                    else
+                                    {
+                                        await Task.Run(() => InsertDocumentDetail(docdetailId, documentId, keyShopId, documentKey, documentDate, shopId, materialId, materialCode, materialName, supplierMaterialCode, supplierMaterialName, materialQty, pricePerUnit, discountType, percentDiscount, amountDiscount, totalDiscount, netPrice, vatType, vatCode, totalVat, totalPrice, unitsmallQty, unitsmallId, unitlargeId, unitratio, unitlargeRatio, unitName, remarkLine, connection, transaction));
+                                    }
+                                }
+                                docdetailId += docdetailId;
+                            }
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -711,14 +720,21 @@ namespace Doikham.API.Data
             string queryStr = $"select * from document  where DocumentTypeID=17 and DocumentNoRef='{invoiceRef}'";
             return dt = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connString));
         }
+        private async Task<DataTable> ValidateStoreSAP(int shopId)
+        {
+            DataTable dt = new DataTable();
+            string queryStr = $"select* from shop_data where ShopCatID1=3 and ShopID={shopId}";
+            return dt = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connString));
+        }
         private async Task<DataTable> GetDocumentHeader(string documentKey)
         {
             DataTable dtH = new DataTable();
-            string queryStr = $"select a.DocumentID,a.KeyShopID,a.DocumentKey,a.DocumentYear,a.DocumentMonth,a.DocumentNo,case when a.DocumentTypeID=3 and a.ShopID<>1 then a.DocumentNoRef else b.DocumentNoRef end As DocumentNoRef,a.DocumentTypeId,a.DocumentDate,c.StaffCode,a.remark,a.DueDate from document a left join document b on a.DocumentIDRef=b.DocumentID and a.DocIDRefShopID=b.KeyShopID left join staffs c on a.ApproveBy=c.StaffID  where a.DocumentStatus=2 and a.DocumentKey='{documentKey}'";
+            string queryStr = $"select a.DocumentID,a.KeyShopID,a.DocumentKey,a.DocumentYear,a.DocumentMonth,a.DocumentNo,a.DocumentNumber,case when a.DocumentTypeID=3 and a.ShopID<>1 then a.DocumentNoRef else b.DocumentNoRef end As DocumentNoRef,a.DocumentTypeId,a.DocumentDate,c.StaffCode,a.remark,a.DueDate,a.ShopID from document a left join document b on a.DocumentIDRef=b.DocumentID and a.DocIDRefShopID=b.KeyShopID left join staffs c on a.ApproveBy=c.StaffID  where a.DocumentStatus=2 and a.DocumentKey='{documentKey}'";
             dtH = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connString));
             dtH.TableName = "Header";
             return dtH;
         }
+
         private async Task<DataTable> GetDocumentDetail(string documentKey)
         {
             DataTable dtL = new DataTable();
@@ -728,11 +744,23 @@ namespace Doikham.API.Data
             dtL.TableName = "Detail";
             return dtL;
         }
+        private async Task<DataTable> GetDocumentDetail_SaleOrder(string documentKey, int shopId,string docDate)
+        {
+            DataTable dtL = new DataTable();
+
+            //string queryStr = $"select d.ShopCode,e.VendorCode, a.DocumentID,a.KeyShopID,a.DocumentKey,b.DocumentKey As POKey,a.DocumentYear,a.DocumentMonth,a.DocumentNo, b.DocumentNoRef,case when a.DocumentTypeID=25 and (po.SupplierMaterialCode is null or po.SupplierMaterialCode='') then b.DocumentNoRef else po.SupplierMaterialCode end As SupplierMaterialCode,a.DocumentDate,c.DocDetailID,case when a.DocumentTypeID=3 then c.DocDetailID else '' end As RESITEMNO, c.ProductCode,c.ProductName,c.ProductAmount As Qty,c.UnitSmallAmount As SmallQty,c.UnitName, c.UnitName As SmallUnitName,c.ProductPricePerUnit,c.ProductNetPrice,c.ProductTotalPrice,LineNumber,s1.ShopCode As ToShopCode,s2.ShopCode As FromShopCode,a.DueDate from document a left join document b on a.DocumentIDRef = b.DocumentID and a.DocIDRefShopID = b.KeyShopID join docdetail c on a.DocumentID = c.DocumentID and a.KeyShopID = c.KeyShopID  join shop_data d on a.ShopID = d.ShopID left join vendors e on a.VendorID = e.VendorID left join interface_document_fromsap po on a.DocumentIDRef=po.DocumentID and a.DocIDRefShopID=po.KeyShopID and c.ProductID=po.ProductID left join shop_data s1 on a.ToInvID = s1.ShopID left join shop_data s2 on a.FromInvID = s2.ShopID  where a.DocumentStatus = 2  and a.DocumentKey='{documentKey}' and c.ProductID in(select Materialid from MaterialMaster_GIS) order by DocDetailID";
+            //string queryStr = $"select distinct d.ShopCode,e.VendorCode, a.DocumentID,a.KeyShopID,a.DocumentKey,b.DocumentKey As POKey,a.DocumentYear,a.DocumentMonth,a.DocumentNo, b.DocumentNoRef,case when a.DocumentTypeID=25 and (po.SupplierMaterialCode is null or po.SupplierMaterialCode='') then b.DocumentNoRef else po.SupplierMaterialCode end As SupplierMaterialCode,a.DocumentDate,c.DocDetailID,case when a.DocumentTypeID=3 then c.DocDetailID else '' end As RESITEMNO, c.ProductCode,c.ProductName,c.ProductAmount As Qty,c.UnitSmallAmount As SmallQty,c.UnitName, c.UnitName As SmallUnitName,c.ProductPricePerUnit,c.ProductNetPrice,c.ProductTotalPrice,LineNumber,s1.ShopCode As ToShopCode,s2.ShopCode As FromShopCode,a.DueDate from document a left join document b on a.DocumentIDRef = b.DocumentID and a.DocIDRefShopID = b.KeyShopID join docdetail c on a.DocumentID = c.DocumentID and a.KeyShopID = c.KeyShopID right join (select mg.* from orderdetail od right join MaterialMaster_GIS mg on od.productid=mg.productid where saledate='{docDate}' and shopid={shopId}) sale on c.productid=sale.MaterialID join shop_data d on a.ShopID = d.ShopID left join vendors e on a.VendorID = e.VendorID left join interface_document_fromsap po on a.DocumentIDRef=po.DocumentID and a.DocIDRefShopID=po.KeyShopID and c.ProductID=po.ProductID left join shop_data s1 on a.ToInvID = s1.ShopID left join shop_data s2 on a.FromInvID = s2.ShopID  where a.DocumentStatus = 2  and a.DocumentKey='{documentKey}' order by DocDetailID";
+            //string queryStr = $"select ShopCode,VendorCode, DocumentID,KeyShopID,DocumentKey,POKey,DocumentYear,DocumentMonth,DocumentNo, DocumentNoRef,SupplierMaterialCode,DocumentDate,DocDetailID, RESITEMNO, ProductCode,ProductName,sum(Qty) as Qty ,sum(SmallQty) as SmallQty,UnitName, SmallUnitName,ProductPricePerUnit,ProductNetPrice,ProductTotalPrice,LineNumber,ToShopCode, FromShopCode,DueDate \r\nfrom (\r\n select distinct d.ShopCode,e.VendorCode, a.DocumentID,a.KeyShopID,a.DocumentKey,b.DocumentKey As POKey,a.DocumentYear,a.DocumentMonth,a.DocumentNo, b.DocumentNoRef,case when a.DocumentTypeID=25 and (po.SupplierMaterialCode is null or po.SupplierMaterialCode='') then b.DocumentNoRef else po.SupplierMaterialCode end As SupplierMaterialCode,a.DocumentDate,c.DocDetailID,case when a.DocumentTypeID=3 then c.DocDetailID else '' end As RESITEMNO, c.ProductCode,c.ProductName,(sale.totalqty*sale.materialamount) As Qty,(sale.totalqty*sale.materialamount) As SmallQty,c.UnitName, c.UnitName As SmallUnitName,c.ProductPricePerUnit,c.ProductNetPrice,c.ProductTotalPrice,LineNumber,s1.ShopCode As ToShopCode,s2.ShopCode As FromShopCode,a.DueDate,sale.TranKey\r\n from document a left join document b on a.DocumentIDRef = b.DocumentID and a.DocIDRefShopID = b.KeyShopID join docdetail c on a.DocumentID = c.DocumentID and a.KeyShopID = c.KeyShopID inner join (select mg.*,od.TotalQty as totalQty,trankey from orderdetail od inner join MaterialMaster_GIS mg on od.productid=mg.productid where saledate='{docDate}' and shopid={shopId} and OrderStatusID=2) sale on c.productid=sale.MaterialID join shop_data d on a.ShopID = d.ShopID left join vendors e on a.VendorID = e.VendorID left join interface_document_fromsap po on a.DocumentIDRef=po.DocumentID and a.DocIDRefShopID=po.KeyShopID and c.ProductID=po.ProductID left join shop_data s1 on a.ToInvID = s1.ShopID left join shop_data s2 on a.FromInvID = s2.ShopID  where a.DocumentStatus = 2  and a.DocumentKey='{documentKey}' \r\n ) Int_GIS\r\n group by ShopCode,VendorCode, DocumentID,KeyShopID,DocumentKey,POKey,DocumentYear,DocumentMonth,DocumentNo, DocumentNoRef,SupplierMaterialCode,DocumentDate,DocDetailID, RESITEMNO, ProductCode,ProductName,UnitName, SmallUnitName,ProductPricePerUnit,ProductNetPrice,ProductTotalPrice,LineNumber,ToShopCode, FromShopCode,DueDate\r\n order by DocDetailID";
+            string queryStr = $"select ShopCode,VendorCode, DocumentID,KeyShopID,DocumentKey,POKey,DocumentYear,DocumentMonth,DocumentNo, DocumentNoRef,SupplierMaterialCode,DocumentDate,DocDetailID, RESITEMNO, ProductCode,ProductName,sum(Qty) as Qty ,sum(SmallQty) as SmallQty,UnitName, SmallUnitName,ProductPricePerUnit,ProductNetPrice,ProductTotalPrice,LineNumber,ToShopCode, FromShopCode,DueDate \r\nfrom (\r\n select distinct d.ShopCode,e.VendorCode, a.DocumentID,a.KeyShopID,a.DocumentKey,b.DocumentKey As POKey,a.DocumentYear,a.DocumentMonth,a.DocumentNo, b.DocumentNoRef,case when a.DocumentTypeID=25 and (po.SupplierMaterialCode is null or po.SupplierMaterialCode='') then b.DocumentNoRef else po.SupplierMaterialCode end As SupplierMaterialCode,a.DocumentDate,c.DocDetailID,case when a.DocumentTypeID=3 then c.DocDetailID else '' end As RESITEMNO, c.ProductCode,c.ProductName,(sale.totalqty*sale.materialamount) As Qty,(sale.totalqty*sale.materialamount) As SmallQty,c.UnitName, c.UnitName As SmallUnitName,c.ProductPricePerUnit,c.ProductNetPrice,c.ProductTotalPrice,LineNumber,s1.ShopCode As ToShopCode,s2.ShopCode As FromShopCode,a.DueDate,sale.TranKey\r\n from document a left join document b on a.DocumentIDRef = b.DocumentID and a.DocIDRefShopID = b.KeyShopID join docdetail c on a.DocumentID = c.DocumentID and a.KeyShopID = c.KeyShopID inner join (select mg.*,od.TotalQty as totalQty,od.trankey from orderdetail od inner join MaterialMaster_GIS mg on od.productid=mg.productid inner join ordertransaction tr on od.TranKey=tr.TranKey where od.saledate='{docDate}' and od.shopid={shopId} and OrderStatusID=2 and tr.TransactionStatusID=2) sale on c.productid=sale.MaterialID join shop_data d on a.ShopID = d.ShopID left join vendors e on a.VendorID = e.VendorID left join interface_document_fromsap po on a.DocumentIDRef=po.DocumentID and a.DocIDRefShopID=po.KeyShopID and c.ProductID=po.ProductID left join shop_data s1 on a.ToInvID = s1.ShopID left join shop_data s2 on a.FromInvID = s2.ShopID  where a.DocumentStatus = 2  and a.DocumentKey='{documentKey}' \r\n ) Int_GIS\r\n group by ShopCode,VendorCode, DocumentID,KeyShopID,DocumentKey,POKey,DocumentYear,DocumentMonth,DocumentNo, DocumentNoRef,SupplierMaterialCode,DocumentDate,DocDetailID, RESITEMNO, ProductCode,ProductName,UnitName, SmallUnitName,ProductPricePerUnit,ProductNetPrice,ProductTotalPrice,LineNumber,ToShopCode, FromShopCode,DueDate\r\n order by DocDetailID";
+            dtL = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connString));
+            dtL.TableName = "Detail";
+            return dtL;
+        }
         private async Task<DataTable> GetDocumentRODetail(string documentKey)
         {
             DataTable dtL = new DataTable();
 
-            string queryStr = $"select ROW_NUMBER() OVER (ORDER BY ro.DocDetailID) Row_num,ro.*,rq.DocumentNo As EBELN,rq.DocDetailID As EBELP,s.ShopID,s.ShopCode from (select a.DocumentID, a.KeyShopID, a.DocumentKey, a.DocIDRefShopID, a.DocumentIDRef, a.DocumentNo, a.DocumentNoRef, a.InvoiceRef, b.DocDetailID, b.ProductAmount, b.UnitSmallAmount as Qty, b.UnitName, b.ProductID, b.ProductCode, b.ProductName, a.DocumentDate, a.ShopID from document a inner join docdetail b on a.DocumentKey= b.DocumentKey where DocumentTypeID = 25  and DocumentStatus = 2) as ro join shop_data s on ro.ShopID = s.ShopID left join(select a.DocumentID, a.KeyShopID, a.DocumentKey, a.DocIDRefShopID, a.DocumentIDRef, a.DocumentNo, a.DocumentNoRef, a.InvoiceRef, b.DocDetailID, b.ProductAmount, b.UnitSmallAmount, b.UnitName, b.ProductID, b.ProductCode, b.ProductName, a.DocumentDate from document a inner join docdetail b on a.DocumentKey= b.DocumentKey where DocumentTypeID = 3  and DocumentStatus = 2) as wt on ro.DocumentIDRef = wt.documentid and ro.DocIDRefShopID = wt.KeyShopID and ro.ProductCode = wt.ProductCode left join (select a.DocumentID, a.KeyShopID, a.DocumentKey, a.DocIDRefShopID, a.DocumentIDRef, a.DocumentNo, a.DocumentNoRef, a.InvoiceRef, b.DocDetailID, b.ProductAmount, b.UnitSmallAmount, b.UnitName, b.ProductID, b.ProductCode, b.ProductName, a.DocumentDate from document a inner join docdetail b on a.DocumentKey= b.DocumentKey where DocumentTypeID = 17 and DocumentStatus = 2) as rq on wt.InvoiceRef = rq.DocumentNoRef and wt.ProductCode = rq.ProductCode where ro.DocumentKey = '{documentKey}' order by ro.DocDetailID";
+            string queryStr = $"select ROW_NUMBER() OVER (ORDER BY ro.DocDetailID) Row_num,ro.*,rq.DocumentNo As EBELN,rq.DocDetailID As EBELP,s.ShopID,s.ShopCode from (select a.DocumentID, a.KeyShopID, a.DocumentKey, a.DocIDRefShopID, a.DocumentIDRef, a.DocumentNo, a.DocumentNoRef, a.InvoiceRef, b.DocDetailID, b.ProductAmount, b.UnitSmallAmount as Qty,b.UnitSmallAmount as SmallQty, b.UnitName, 'EA' As SmallUnitName, b.ProductID, b.ProductCode, b.ProductName, a.DocumentDate, a.ShopID from document a inner join docdetail b on a.DocumentKey= b.DocumentKey where DocumentTypeID = 25  and DocumentStatus = 2) as ro join shop_data s on ro.ShopID = s.ShopID left join(select a.DocumentID, a.KeyShopID, a.DocumentKey, a.DocIDRefShopID, a.DocumentIDRef, a.DocumentNo, a.DocumentNoRef, a.InvoiceRef, b.DocDetailID, b.ProductAmount, b.UnitSmallAmount,b.UnitSmallAmount as SmallQty, b.UnitName, 'EA' As SmallUnitName, b.ProductID, b.ProductCode, b.ProductName, a.DocumentDate from document a inner join docdetail b on a.DocumentKey= b.DocumentKey where DocumentTypeID = 3  and DocumentStatus = 2) as wt on ro.DocumentIDRef = wt.documentid and ro.DocIDRefShopID = wt.KeyShopID and ro.ProductCode = wt.ProductCode left join (select a.DocumentID, a.KeyShopID, a.DocumentKey, a.DocIDRefShopID, a.DocumentIDRef, a.DocumentNo, a.DocumentNoRef, a.InvoiceRef, b.DocDetailID, b.ProductAmount, b.UnitSmallAmount,b.UnitSmallAmount  As SmallQty, b.UnitName, 'EA' As SmallUnitName, b.ProductID, b.ProductCode, b.ProductName, a.DocumentDate from document a inner join docdetail b on a.DocumentKey= b.DocumentKey where DocumentTypeID = 17 and DocumentStatus = 2) as rq on wt.InvoiceRef = rq.DocumentNoRef and wt.ProductCode = rq.ProductCode where ro.DocumentKey = '{documentKey}' order by ro.DocDetailID";
             dtL = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connString));
             dtL.TableName = "Detail";
             return dtL;
@@ -803,6 +831,70 @@ namespace Doikham.API.Data
             id = await Task.Run(() => _dbHelper.ExecuteNonQuery(queryStr, connection, transaction));
             return id;
         }
+
+        public async Task<GOODISSUEINDOCUMENT> SalesOrderAsync(string documentKey, string docTypeCode, string shopCoe)
+        {
+
+            GOODISSUEINDOCUMENT data = new GOODISSUEINDOCUMENT();
+            DataTable dtH = new DataTable();
+            DataTable dtL = new DataTable();
+
+            dtH = await Task.Run(() => GetDocumentHeader(documentKey));
+            
+
+            GOODISSUEIN_HEADER header = new GOODISSUEIN_HEADER();
+            if (dtH.Rows.Count > 0)
+            {
+
+                int docTypeId = Convert.ToInt32(dtH.Rows[0]["DocumentTypeId"]);
+                int docMonth = Convert.ToInt32(dtH.Rows[0]["DocumentMonth"]);
+                int docYear = Convert.ToInt32(dtH.Rows[0]["DocumentYear"]);
+                int docNumber = Convert.ToInt32(dtH.Rows[0]["DocumentNumber"]);
+                int docShopId = Convert.ToInt32(dtH.Rows[0]["ShopID"]);
+                DateTime docDate = Convert.ToDateTime(dtH.Rows[0]["documentdate"]);
+                string docNo = "";
+                docNo = $"{shopCoe}{docTypeCode}{docYear}{docMonth}{docDate.Day}";
+
+                header.POSTYPE = docTypeCode;
+                header.POSDOCITEM = docNo;
+                header.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                if (docTypeId == 3)
+                {
+                    header.RESNO = dtH.Rows[0]["documentnoref"].ToString();
+                }
+                else
+                {
+                    header.RESNO = "";
+                }
+                header.BUDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                header.XBLNR = "";
+                header.USNAM = dtH.Rows[0]["staffcode"].ToString();
+                List<GOODISSUEIN_ITEMS> items = new List<GOODISSUEIN_ITEMS>();
+                dtL = await Task.Run(() => GetDocumentDetail_SaleOrder(documentKey, docShopId, Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyy-MM-dd", invC)));
+                if (dtL.Rows.Count > 0)
+                {
+                    items = (from DataRow dr in dtL.Rows
+                             select new GOODISSUEIN_ITEMS()
+                             {
+                                 POSGIITEMNO = dr["DocDetailID"].ToString(),
+                                 RESITEMNO = dr["RESITEMNO"].ToString(),
+                                 MATNR = dr["ProductCode"].ToString(),
+                                 SWERKS = dr["ShopCode"].ToString(),
+                                 RWERKS = dr["ToShopCode"].ToString(),
+                                 MENGE = dr["Qty"].ToString(),
+                                 MEINS = dr["UnitName"].ToString(),
+                                 SGTXT = "",
+                             }).ToList();
+                }
+                header.ITEMS = items;
+            }
+            GOODISSUEIN_ORDER adjust = new GOODISSUEIN_ORDER();
+            adjust.HEADER = header;
+
+            data.GOODS_ISSUE_IN = adjust;
+            return data;
+        }
+ 
 
         #endregion
     }

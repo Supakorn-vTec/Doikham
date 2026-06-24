@@ -1,0 +1,89 @@
+
+--- สำหรับ View : pos_interface_salessummary_header
+
+SELECT        cc.ShopCode AS POS_SHOPID, aa.ReceiptNumber AS BSTNK, bb.FullTaxNumber AS POS_INVOICE, 
+case when bb.FullTaxNumber is null then cc.CompanyName else bb.InvoiceName end AS NAME1, bb.InvoiceName1 AS NAME2, 
+case when bb.FullTaxNumber is null then cc.CompanyAddress1 else bb.InvoiceAddress1 end AS STR_SUPPL1, 
+case when bb.FullTaxNumber is null then cc.CompanyAddress2 else bb.InvoiceAddress2 end AS STR_SUPPL2, 
+'' AS STREET, '' AS STR_SUPPL3, '' AS LOCATION, 
+case when bb.FullTaxNumber is null then cc.CompanyCity else bb.InvoiceCity end AS CITY2, 
+case when bb.FullTaxNumber is null then pv.ProvinceName else bb.ProvinceName end AS CITY1, 
+case when bb.FullTaxNumber is null then cc.companyzipcode else bb.InvoiceZipCode end AS POST_CODE1, 
+case when bb.FullTaxNumber is null then cc.companytaxID else bb.InvoiceTaxID end AS TAX_ID, 
+case when bb.FullTaxNumber is null then cc.BranchNo else bb.InvoiceCompanyBranchNo end AS BRANCH, 
+aa.SaleDate AS BSTDK, aa.SaleDate AS VBAK_ERDAT, case when mm.MemberGroupCode is null or mm.MemberGroupCode='CREDIT CUSTOMER' then 'S1' else mm.MemberGroupCode end AS PLTYP, 
+case when bb.FullTaxNumber is null then '' else bb.InvoiceEmail end AS EMAIL,
+case when bb.FullTaxNumber is null then '' else bb.RegistrationNumber end AS POSID,
+case when bb.FullTaxNumber is null then '' else aa.ReceiptNumber end AS REFNO,
+case when bb.FullTaxNumber is null then '' else aa.PaidStaff end AS SALEMAN,
+case when bb.FullTaxNumber is null then 0 else aa.ReceiptRoundingBill end AS ROUNDING,
+aa.TransactionID, aa.ComputerID, aa.ShopID, aa.SaleDate, aa.TranKey
+FROM            dbo.ordertransaction AS aa LEFT OUTER JOIN
+                             (SELECT        b.TransactionID, b.ComputerID, a.FullTaxNumber, a.SaleDate, a.InvoiceName, a.InvoiceName1, a.InvoiceCompanyType, a.InvoiceCompanyBranchNo, a.InvoiceAddress1, a.InvoiceAddress2, a.InvoiceCity, 
+                                                         c.ProvinceName, a.InvoiceZipCode, a.InvoiceTaxID,co.RegistrationNumber,a.InvoiceEmail
+                               FROM            dbo.ordertransactionfulltaxinvoice AS a INNER JOIN
+                                                         dbo.orderfulltaxinvoicelink AS b ON a.FullTaxInvoiceID = b.FullTaxInvoiceID 
+														 AND a.FullTaxInvoiceComputerID = b.FullTaxInvoiceComputerID 
+														 AND a.SaleDate=b.SaleDate
+														 INNER JOIN dbo.provinces AS c ON a.InvoiceProvince = c.ProvinceID AND a.InvoiceProvinceLangID = c.LangID
+														 INNER JOIN computername co on  a.FullTaxInvoiceComputerID = co.ComputerID
+                               WHERE        a.FullTaxStatus = 2) AS bb ON aa.TransactionID = bb.TransactionID AND aa.ComputerID = bb.ComputerID INNER JOIN
+                         dbo.shop_data AS cc ON aa.ShopID = cc.ShopID left join (select a.MemberGroupID,a.MemberGroupCode,b.MemberID,b.MemberCode,b.MemberFirstName,b.MemberLastName from membergroup a join members b on a.MemberGroupID=b.MemberGroupID) mm on aa.MemberID=mm.MemberID						
+left join provinces as pv on cc.CompanyProvince=pv.ProvinceID
+WHERE        cc.ShopCatID1<>2 and pv.LangID=2 and (aa.TransactionStatusID = 2) AND (aa.DocType IN
+                             (SELECT        DocumentTypeID
+                               FROM            dbo.documenttype
+                               WHERE         (IsSale IN (1, 2, 3))));
+							   
+							   
+							   
+
+
+--- สำหรับ View : pos_interface_salessummary_detail
+SELECT   POS_SHOPID, CONCAT(POS_SHOPID, PLTYP, FORMAT(h.SaleDate, 'yyyyMMdd')) AS BSTNK, h.POS_INVOICE, ROW_NUMBER() OVER (PARTITION BY POS_SHOPID, h.POS_INVOICE, h.SaleDate, PLTYP
+ORDER BY POS_SHOPID, h.SaleDate, matnr,PLTYP) AS POSNR_VA, MATNR, VBAP_VRKME, ARKTX, sum(KWMENG) AS KWMENG, KBETR, sum(KBETR1) AS KBETR1, case when sum(KBETR2) is null then 0 else sum(KBETR2) end AS KBETR2, sum(KBETR3) AS KBETR3, sum(KBETR4) 
+AS KBETR4, sum(KBETR5) AS KBETR5, sum(KBETR6) AS KBETR6, sum(KBETR7) AS KBETR7, FLAG_FREE,VAT_TYPE, h.ShopID, h.SaleDate
+FROM            pos_interface_sales_header h JOIN
+(
+select * from 
+(
+select * from 
+(
+select a.POSNR_VA, a.MATNR,  a.VBAP_VRKME, a.ARKTX, 
+case when b.KWMENG is not null then a.KWMENG-b.KWMENG else a.KWMENG end as KWMENG , a.KBETR,
+ case when b.KBETR1 is not null then a.KBETR1-b.KBETR1 else a.KBETR1 end as KBETR1, 
+a.KBETR2+b.KBETR2 as KBETR2 ,a.KBETR3, a.KBETR4, a.KBETR5,  a.KBETR6, a.KBETR7, a.FLAG_FREE,a.VAT_TYPE,
+	 a.TransactionID, a.ComputerID, a.TranKey, a.ShopID, a.SaleDate,a.productid
+
+from [dbo].[pos_interface_sales_pay_item] a left join [dbo].[pos_interface_sales_free_item_n_disc] b on a.trankey=b.trankey and  a.matnr=b.matnr and a.productid=b.productid -- 
+) a1
+union all
+select * from [dbo].[pos_interface_sales_free_item_n_disc] --
+) a2
+union  all
+select * from 
+(
+SELECT   
+a.OrderDetailID AS POSNR_VA, d.ProductName7 AS MATNR, 
+'EA' AS VBAP_VRKME, d.ProductName1 AS ARKTX, 
+  ceiling(((a.TotalQty*a.Priceperunit)-a.TotalDiscount)/a.Priceperunit)*d.productname8 AS KWMENG,
+ (a.Priceperunit)/d.productname8  AS KBETR, 
+ 0 AS KBETR1, 0 AS KBETR2, 0 AS KBETR3, 0 AS KBETR4, 0 AS KBETR5, 
+   a.ProductVAT AS KBETR6, a.ProductBeforeVAT AS KBETR7, 
+   '' AS FLAG_FREE, 
+	 case when a.VATType=1 then 'N' else 'V' end AS VAT_TYPE, 
+	 a.TransactionID, a.ComputerID, a.TranKey, a.ShopID, a.SaleDate	,a.productid					
+FROM   orderdetail a LEFT JOIN
+    products d ON a.productid = d.productid 
+	left join ordertransaction t on a.TranKey=t.TranKey
+	left join shop_data s on a.ShopID=s.ShopID
+	where a.OrderStatusID=2 and a.DiscPercent=100 and t.DocType=8 and s.ShopCatID1<>2 -- 
+) a3
+) sd 
+
+ON h.TransactionID = sd.TransactionID AND h.ComputerID = sd.ComputerID
+where KWMENG > 0
+GROUP BY POS_SHOPID, MATNR, VBAP_VRKME, ARKTX, KBETR, FLAG_FREE,VAT_TYPE, h.ShopID, h.SaleDate, h.PLTYP, h.POS_INVOICE;
+
+
+

@@ -23,7 +23,7 @@ namespace Doikham.API.Controllers
         private IPOSLog repoLog { get; set; }
         CultureInfo invC;
         private readonly IConfiguration _config;
-        private bool enableSendDataToSAP = false;
+        private bool enableSendDataToSAP = true;
         public SalesController(ISales sales, ISAP sap, IPOSLog poslog, IConfiguration configuration)
         {
             repo = sales;

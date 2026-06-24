@@ -13,6 +13,7 @@ namespace Doikham.API.Data
 
         public Task<DataTable> GetLog(int documentTypeId);
         public Task<DataTable> GetLog();
+        public Task<DataTable> GetLog(int documentTypeId, string documentDate);
         public Task<string> SetLog(string tranKey, int shopID, string docDate, int docType, string statusCode, string msgLog);
         public Task<int> SetResponseLog(string uuid, string tranKey, int shopID, int docType, string statusCode, string msgLog);
         public Task<DataTable> GetLogForResend(string uuid);
@@ -41,7 +42,13 @@ namespace Doikham.API.Data
         public async Task<DataTable> GetLog(int documentTypeId)
         {
             DataTable dt = new DataTable();
-            string queryStr = $"select a.ShopId,a.DocumentID,a.KeyShopID,a.DocumentKey,a.DocumentYear,a.DocumentMonth,a.DocumentNo,b.DocumentNoRef,a.DocumentDate from document a left join document b on a.DocumentIDRef=b.DocumentID and a.DocIDRefShopID=b.KeyShopID left join SAPBOne_Interface_Log c on a.ShopID=c.ShopID and a.DocumentKey=c.TranKey and c.DocType={documentTypeId} where a.DocumentStatus=2 and a.DocumentTypeID={documentTypeId} and c.UUID is null;";
+            string queryStr = $"select a.ShopId,a.DocumentID,a.KeyShopID,a.DocumentKey,a.DocumentYear,a.DocumentMonth,a.DocumentNo,b.DocumentNoRef,a.DocumentDate,a.documenttypeid from document a left join document b on a.DocumentIDRef=b.DocumentID and a.DocIDRefShopID=b.KeyShopID left join SAPBOne_Interface_Log c on a.ShopID=c.ShopID and a.DocumentKey=c.TranKey and c.DocType={documentTypeId} where a.DocumentStatus=2 and a.DocumentTypeID={documentTypeId} and c.UUID is null;";
+            return dt = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connString));
+        }
+        public async Task<DataTable> GetLog(int documentTypeId,string documentDate)
+        {
+            DataTable dt = new DataTable();
+            string queryStr = $"select a.ShopId,st.ShopCode,a.DocumentID,a.KeyShopID,a.DocumentKey,a.DocumentYear,a.DocumentMonth,a.DocumentNo,b.DocumentNoRef,a.DocumentDate,a.documenttypeid from document a left join document b on a.DocumentIDRef=b.DocumentID and a.DocIDRefShopID=b.KeyShopID left join SAPBOne_Interface_Log c on a.ShopID=c.ShopID and a.DocumentKey=c.TranKey and c.DocType={documentTypeId} inner join shop_data st on a.shopid=st.shopid where a.DocumentStatus=2 and a.DocumentTypeID={documentTypeId} and a.DocumentDate>='{documentDate}' and c.UUID is null;";
             return dt = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connString));
         }
         public async Task<DataTable> GetLog()
@@ -95,7 +102,7 @@ namespace Doikham.API.Data
         }
         public async Task<int> SetDocumentRefFromSAP( string tranKey, string refKey)
         {
-            string queryStr = $"update Document set DocumentNoRef='{refKey}' where documentkey='{tranKey}'";
+            string queryStr = $"update Document set DocumentNoRef='{refKey}',ReceiveDate=GETDATE() where documentkey='{tranKey}'";
             return await Task.Run(() => _dbHelper.ExecuteNonQuery(queryStr, connString));
         }
         #endregion

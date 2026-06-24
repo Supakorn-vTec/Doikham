@@ -25,7 +25,8 @@ namespace Doikham.API.Controllers
         private IPOSLog repoLog { get; set; }
         CultureInfo invC;
         private readonly IConfiguration _config;
-        private bool enableSendDataToSAP = false;
+        private bool enableSendDataToSAP = true;
+        private string startSaleDate = "2025-01-01";
         public InventoryController(IInventory inventory, ISAP sap, IPOSLog poslog, IConfiguration configuration)
         {
             repo = inventory;
@@ -34,6 +35,7 @@ namespace Doikham.API.Controllers
             _config = configuration;
             repoLog = poslog;
             enableSendDataToSAP = Convert.ToBoolean(_config.GetSection("SAP")["Enable"]);
+            startSaleDate =  _config.GetSection("SAP")["StartSaleDate"];
         }
 
         //Purchase Order
@@ -161,6 +163,87 @@ namespace Doikham.API.Controllers
                                 resStatusCode = dt.Rows[0]["TYPE"].ToString();
                             }
                             await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
+                        }
+                    }
+                }
+                response.TYPE = "S";
+                response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
+                response.MESSAGE = "Success";
+                resData.RESPONSE = response;
+                return Ok(resData);
+
+            }
+            catch (Exception e)
+            {
+                response.TYPE = "E";
+                response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
+                response.MESSAGE = e.Message;
+                resData.RESPONSE = response;
+                return StatusCode((int)HttpStatusCode.InternalServerError, resData);
+            }
+        }
+
+        //Sales Order 
+
+        [HttpPost("[action]")]
+        public async Task<ActionResult> SalesOrder()
+        {
+
+            RESPONSEDATA resData = new RESPONSEDATA();
+            RESPONSE response = new RESPONSE();
+            int docType = 20;
+            string docTypeCode = "GIS";
+            try
+            {
+                GOODISSUEINDOCUMENT data = new GOODISSUEINDOCUMENT();
+                string action = "GOODSISSUE";
+                string documentKey = "GIS";
+
+                DataTable dtLog = new DataTable();
+                dtLog = await Task.Run(() => repoLog.GetLog(docType, startSaleDate));
+                if (dtLog.Rows.Count > 0)
+                {
+                    for (int i = 0; i < dtLog.Rows.Count; i++)
+                    {
+                        documentKey = dtLog.Rows[i]["documentkey"].ToString();
+                        docType = Convert.ToInt32(dtLog.Rows[i]["documenttypeid"]);
+                        string shopCoe = dtLog.Rows[i]["shopCode"].ToString();
+                        docTypeCode = "GIS"; 
+
+                        data = await Task.Run(() => repo.SalesOrderAsync(documentKey, docTypeCode,shopCoe));
+                        string json = JsonConvert.SerializeObject(data);
+
+                        int shopID = Convert.ToInt32(dtLog.Rows[i]["shopid"]);
+                        string statusCode = "S";
+                        string docDate = "{ d'" + Convert.ToDateTime(dtLog.Rows[i]["documentDate"]).ToString("yyyy-MM-dd", invC) + "'} ";
+                        string uuid = await Task.Run(() => repoLog.SetLog(documentKey, shopID, docDate, docType, statusCode, json));
+
+                        if (enableSendDataToSAP == true)
+                        {
+                            try
+                            {
+                                HttpResponseMessage resFromSAP = await Task.Run(() => repoSAP.Post(action, json));
+                                var resMsg = await Task.Run(() => resFromSAP.Content.ReadAsStringAsync());
+                                var jsonLinq = JObject.Parse(resMsg);
+                                DataTable dt = new DataTable();
+                                dt = await Task.Run(() => repoSAP.ConvertResponseToDataTable(resFromSAP));
+                                var resStatusCode = "S";
+                                if (dt.Rows.Count > 0)
+                                {
+                                    resStatusCode = dt.Rows[0]["TYPE"].ToString();
+                                }
+                                await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
+                            }
+                            catch (Exception ex) {
+
+                                response.TYPE = "E";
+                                response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
+                                response.MESSAGE = ex.Message;
+                                resData.RESPONSE = response;
+                                string jsonError = JsonConvert.SerializeObject(resData);
+                                await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, "E", jsonError.ToString()));
+                            }
+                           
                         }
                     }
                 }
@@ -328,6 +411,7 @@ namespace Doikham.API.Controllers
                 return StatusCode((int)HttpStatusCode.InternalServerError, resData);
             }
         }
+
         [HttpPost("[action]")]
         public async Task<ActionResult> AdjustOrder()
         {
@@ -415,6 +499,9 @@ namespace Doikham.API.Controllers
                         break;
                     case SAPMETHOD.REQUESTFORM:
                         action = "REQUESTFORM";
+                        break;
+                    case SAPMETHOD.RECIPES:
+                        action = "RECIPES";
                         break;
                 }
                 action = data.ACTION.ToString();

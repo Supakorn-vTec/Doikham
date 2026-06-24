@@ -8,7 +8,8 @@ namespace Doikham.Shared.Database
     {
         REQUESTFORM,
         GOODSRECEIPT,
-        GOODSISSUE      
+        GOODSISSUE,
+        RECIPES
     }
     public class RESENDDATA
     {
