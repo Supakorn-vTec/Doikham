@@ -83,7 +83,8 @@ namespace Doikham.API.Data
                                  MATNR = dr["ProductCode"].ToString(),
                                  SWERKS = dr["ShopCode"].ToString(),
                                  RWERKS = dr["ToShopCode"].ToString(),
-                                 MENGE = dr["Qty"].ToString(),
+                                 //MENGE = dr["Qty"].ToString(),
+                                 MENGE = Convert.ToDecimal(dr["Qty"]).ToString("0.000"),
                                  MEINS = dr["UnitName"].ToString(),
                                  SGTXT = "",
                              }).ToList();
@@ -127,7 +128,8 @@ namespace Doikham.API.Data
                                  MAKTX = dr["ProductName"].ToString(),
                                  WERKS = dr["ShopCode"].ToString(),
                                  SUPPLANT = dr["ToShopCode"].ToString(),
-                                 MENGE = dr["SmallQty"].ToString(),
+                                 //MENGE = dr["SmallQty"].ToString(),
+                                 MENGE = Convert.ToDecimal(dr["SmallQty"]).ToString("0.000"),
                                  MEINS = dr["SmallUnitName"].ToString(),
                                  DELDATE = Convert.ToDateTime(dr["DueDate"]).ToString("yyyyMMdd", invC),
                                  SGTXT = "",
@@ -331,7 +333,7 @@ namespace Doikham.API.Data
                 header.POSTYPE = "TRO";
                 header.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
                 header.BKTXT = dtH.Rows[0]["documentno"].ToString();
-                header.LFSNR = "Interface";
+                header.LFSNR = "";
                 header.BUDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
                 header.USNAM = dtH.Rows[0]["staffcode"].ToString();
                 List<GOODRECEIPT_ITEMS> items = new List<GOODRECEIPT_ITEMS>();
@@ -344,13 +346,13 @@ namespace Doikham.API.Data
                                  MATNR = dr["ProductCode"].ToString(),
                                  WERKS = dr["ShopCode"].ToString(),
                                  LIFNR = "",
-                                 SWERKS = dr["ShopCode"].ToString(),
-                                 MENGE = dr["SmallQty"].ToString(),
+                                 SWERKS ="",
+                                 MENGE = Convert.ToDecimal(dr["SmallQty"]).ToString("0.000"),
                                  MEINS = dr["SmallUnitName"].ToString(),
-                                 NETPR = "0.00",
-                                 NETWR ="0.00",
+                                 NETPR = "0.000",
+                                 NETWR ="0.000",
                                  EBELN = dr["EBELN"].ToString(),
-                                 EBELP = dr["EBELP"].ToString(),
+                                 EBELP = dr["EBELP"]?.ToString().Trim().PadLeft(5, '0'),
                                  SGTXT = "",
                              }).ToList();
                 }
@@ -538,7 +540,7 @@ namespace Doikham.API.Data
                 header.POSTYPE = "RO";
                 header.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
                 header.BKTXT = dtH.Rows[0]["documentno"].ToString();
-                header.LFSNR = "Interface";
+                header.LFSNR = "";
                 header.BUDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
                 header.USNAM = dtH.Rows[0]["staffcode"].ToString();
                 List<GOODRECEIPT_ITEMS> items = new List<GOODRECEIPT_ITEMS>();
@@ -551,8 +553,9 @@ namespace Doikham.API.Data
                                  MATNR = dr["ProductCode"].ToString(),
                                  WERKS = dr["ShopCode"].ToString(),
                                  LIFNR = dr["VendorCode"].ToString(),
-                                 SWERKS = dr["ShopCode"].ToString(),
-                                 MENGE = dr["Qty"].ToString(),
+                                 SWERKS = $"{dr["ShopCode"].ToString()}-{dr["sloc"].ToString()}",
+                                 //MENGE = dr["Qty"].ToString(),
+                                 MENGE = Convert.ToDecimal(dr["Qty"]).ToString("0.000"),
                                  MEINS = dr["UnitName"].ToString(),
                                  NETPR = dr["ProductPricePerUnit"].ToString(),
                                  NETWR = dr["ProductTotalPrice"].ToString(),
@@ -585,7 +588,7 @@ namespace Doikham.API.Data
                 header.POSTYPE = "DRO";
                 header.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
                 header.BKTXT = dtH.Rows[0]["documentno"].ToString();
-                header.LFSNR = "Interface";
+                header.LFSNR = "";
                 header.BUDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
                 header.USNAM = dtH.Rows[0]["staffcode"].ToString();
                 List<GOODRECEIPT_ITEMS> items = new List<GOODRECEIPT_ITEMS>();
@@ -599,7 +602,8 @@ namespace Doikham.API.Data
                                  WERKS = dr["ShopCode"].ToString(),
                                  LIFNR = dr["VendorCode"].ToString(),
                                  SWERKS = dr["ShopCode"].ToString(),
-                                 MENGE = dr["SmallQty"].ToString(),
+                                 //MENGE = dr["SmallQty"].ToString(),
+                                 MENGE = Convert.ToDecimal(dr["SmallQty"]).ToString("0.000"),
                                  MEINS = dr["SmallUnitName"].ToString(),
                                  NETPR = dr["ProductPricePerUnit"].ToString(),
                                  NETWR = dr["ProductTotalPrice"].ToString(),
@@ -739,7 +743,7 @@ namespace Doikham.API.Data
         {
             DataTable dtL = new DataTable();
 
-            string queryStr = $"select d.ShopCode,e.VendorCode, a.DocumentID,a.KeyShopID,a.DocumentKey,b.DocumentKey As POKey,a.DocumentYear,a.DocumentMonth,a.DocumentNo, b.DocumentNoRef,case when a.DocumentTypeID=25 and (po.SupplierMaterialCode is null or po.SupplierMaterialCode='') then b.DocumentNoRef else po.SupplierMaterialCode end As SupplierMaterialCode,a.DocumentDate,c.DocDetailID,case when a.DocumentTypeID=3 then c.DocDetailID else '' end As RESITEMNO, c.ProductCode,c.ProductName,c.ProductAmount As Qty,c.UnitSmallAmount As SmallQty,c.UnitName, 'EA' As SmallUnitName,c.ProductPricePerUnit,c.ProductNetPrice,c.ProductTotalPrice,LineNumber,s1.ShopCode As ToShopCode,s2.ShopCode As FromShopCode,a.DueDate from document a left join document b on a.DocumentIDRef = b.DocumentID and a.DocIDRefShopID = b.KeyShopID join docdetail c on a.DocumentID = c.DocumentID and a.KeyShopID = c.KeyShopID join shop_data d on a.ShopID = d.ShopID left join vendors e on a.VendorID = e.VendorID left join interface_document_fromsap po on a.DocumentIDRef=po.DocumentID and a.DocIDRefShopID=po.KeyShopID and c.ProductID=po.ProductID left join shop_data s1 on a.ToInvID = s1.ShopID left join shop_data s2 on a.FromInvID = s2.ShopID  where a.DocumentStatus = 2  and a.DocumentKey='{documentKey}' order by DocDetailID";
+            string queryStr = $"select d.ShopCode,d.sloc,e.VendorCode, a.DocumentID,a.KeyShopID,a.DocumentKey,b.DocumentKey As POKey,a.DocumentYear,a.DocumentMonth,a.DocumentNo, b.DocumentNoRef,case when a.DocumentTypeID=25 and (po.SupplierMaterialCode is null or po.SupplierMaterialCode='') then b.DocumentNoRef else po.SupplierMaterialCode end As SupplierMaterialCode,a.DocumentDate,c.DocDetailID,case when a.DocumentTypeID=3 then c.DocDetailID else '' end As RESITEMNO, c.ProductCode,c.ProductName,c.ProductAmount As Qty,c.UnitSmallAmount As SmallQty,c.UnitName, 'EA' As SmallUnitName,c.ProductPricePerUnit,c.ProductNetPrice,c.ProductTotalPrice,LineNumber,s1.ShopCode As ToShopCode,s2.ShopCode As FromShopCode,a.DueDate from document a left join document b on a.DocumentIDRef = b.DocumentID and a.DocIDRefShopID = b.KeyShopID join docdetail c on a.DocumentID = c.DocumentID and a.KeyShopID = c.KeyShopID join shop_data d on a.ShopID = d.ShopID left join vendors e on a.VendorID = e.VendorID left join interface_document_fromsap po on a.DocumentIDRef=po.DocumentID and a.DocIDRefShopID=po.KeyShopID and c.ProductID=po.ProductID left join shop_data s1 on a.ToInvID = s1.ShopID left join shop_data s2 on a.FromInvID = s2.ShopID  where a.DocumentStatus = 2  and a.DocumentKey='{documentKey}' order by DocDetailID";
             dtL = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connString));
             dtL.TableName = "Detail";
             return dtL;
@@ -881,7 +885,8 @@ namespace Doikham.API.Data
                                  MATNR = dr["ProductCode"].ToString(),
                                  SWERKS = dr["ShopCode"].ToString(),
                                  RWERKS = dr["ToShopCode"].ToString(),
-                                 MENGE = dr["Qty"].ToString(),
+                                 //MENGE = dr["Qty"].ToString(),
+                                 MENGE = Convert.ToDecimal(dr["Qty"]).ToString("0.000"),
                                  MEINS = dr["UnitName"].ToString(),
                                  SGTXT = "",
                              }).ToList();

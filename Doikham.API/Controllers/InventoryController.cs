@@ -26,7 +26,7 @@ namespace Doikham.API.Controllers
         CultureInfo invC;
         private readonly IConfiguration _config;
         private bool enableSendDataToSAP = true;
-        private string startSaleDate = "2025-01-01";
+        private string startSaleDate = "2026-01-01";
         public InventoryController(IInventory inventory, ISAP sap, IPOSLog poslog, IConfiguration configuration)
         {
             repo = inventory;
