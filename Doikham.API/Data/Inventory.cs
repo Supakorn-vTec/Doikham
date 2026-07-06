@@ -1,4 +1,5 @@
 ﻿using Doikham.Shared.Database;
+using Microsoft.AspNetCore.Server.IISIntegration;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using System;
@@ -19,9 +20,13 @@ namespace Doikham.API.Data
         public Task<REQUESTDOCUMENT> RequestOrderAsync(string documentKey);
         public Task<bool> TransferOrderAsync(GOODISSUEOUTDOCUMENT issueData);
         public Task<GOODRECEIPTDOCUMENT> TransferOrderReciptAsync(string documentKey);
-        public Task<GOODISSUEINDOCUMENT> AdjustOrderAsync(string documentKey, string docTypeCode);
+
+        public Task<STOCKADJUST> AdjustStockAsync(string documentKey, string docTypeCode);
+        public Task<PREFINISHDOCUMENT> PrefinishAsync(string documentKey, string docTypeCode,int docType);
+        public Task<RETURNTTODC> TransferToDCAsync(string documentKey, string docTypeCode);
+        public Task<RETURNTTOSLOC> TransferToSLOCAsync(string documentKey, string docTypeCode);
         public Task<GOODISSUEINDOCUMENT> SalesOrderAsync(string documentKey, string docTypeCode, string shopCoe);
- 
+
 
     }
     public class Inventory : IInventory
@@ -54,6 +59,26 @@ namespace Doikham.API.Data
             dtH = await Task.Run(() => GetDocumentHeader(documentKey));
             dtL = await Task.Run(() => GetDocumentDetail(documentKey));
 
+            DataTable dtPro = new DataTable();
+            string PropertyTextValue = "#,##0.00";
+            dtPro = await Task.Run(() => GetProgramPropertyValue(18));
+            try
+            {
+                if (dtPro.Rows[0]["PropertyTextValue"] != null)
+                {
+
+                    PropertyTextValue = dtPro.Rows[0]["PropertyTextValue"].ToString();
+                }
+                else
+                {
+                    PropertyTextValue = "#,##0.00";
+                }
+            }
+            catch (Exception ex)
+            {
+                PropertyTextValue = "#,##0.00";
+            }
+
             GOODISSUEIN_HEADER header = new GOODISSUEIN_HEADER();
             if (dtH.Rows.Count > 0)
             {
@@ -61,7 +86,7 @@ namespace Doikham.API.Data
                 header.POSTYPE = docTypeCode;
                 header.POSDOCITEM = dtH.Rows[0]["documentno"].ToString();
                 header.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
-                if(docTypeId == 3)
+                if (docTypeId == 3)
                 {
                     header.RESNO = dtH.Rows[0]["documentnoref"].ToString();
                 }
@@ -79,12 +104,12 @@ namespace Doikham.API.Data
                              select new GOODISSUEIN_ITEMS()
                              {
                                  POSGIITEMNO = dr["DocDetailID"].ToString(),
-                                 RESITEMNO = dr["RESITEMNO"].ToString(),
+                                 RESITEMNO = "",// dr["RESITEMNO"].ToString(),
                                  MATNR = dr["ProductCode"].ToString(),
                                  SWERKS = dr["ShopCode"].ToString(),
                                  RWERKS = dr["ToShopCode"].ToString(),
                                  //MENGE = dr["Qty"].ToString(),
-                                 MENGE = Convert.ToDecimal(dr["Qty"]).ToString("0.000"),
+                                 MENGE = Convert.ToDecimal(dr["Qty"]).ToString(PropertyTextValue),
                                  MEINS = dr["UnitName"].ToString(),
                                  SGTXT = "",
                              }).ToList();
@@ -97,6 +122,316 @@ namespace Doikham.API.Data
             data.GOODS_ISSUE_IN = adjust;
             return data;
         }
+
+        public async Task<STOCKADJUST> AdjustStockAsync(string documentKey, string docTypeCode)
+        {
+
+            STOCKADJUST data = new STOCKADJUST();
+            DataTable dtH = new DataTable();
+            DataTable dtL = new DataTable();
+
+            dtH = await Task.Run(() => GetDocumentHeader(documentKey));
+            dtL = await Task.Run(() => GetDocumentDetail(documentKey));
+
+            DataTable dtPro = new DataTable();
+            string PropertyTextValue = "#,##0.00";
+            dtPro = await Task.Run(() => GetProgramPropertyValue(18));
+            try
+            {
+                if (dtPro.Rows[0]["PropertyTextValue"] != null)
+                {
+
+                    PropertyTextValue = dtPro.Rows[0]["PropertyTextValue"].ToString();
+                }
+                else
+                {
+                    PropertyTextValue = "#,##0.00";
+                }
+            }
+            catch (Exception ex)
+            {
+                PropertyTextValue = "#,##0.00";
+            }
+            PropertyTextValue = PropertyTextValue.Replace(",", "");
+            GOODISSUEIN_HEADER header = new GOODISSUEIN_HEADER();
+            if (dtH.Rows.Count > 0)
+            {
+                int docTypeId = Convert.ToInt32(dtH.Rows[0]["DocumentTypeId"]);
+                header.POSTYPE = docTypeCode;
+                header.POSDOCITEM = dtH.Rows[0]["documentno"].ToString();
+                header.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                if (docTypeId == 3)
+                {
+                    header.RESNO = dtH.Rows[0]["documentnoref"].ToString();
+                }
+                else
+                {
+                    header.RESNO = "";
+                }
+                header.BUDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                header.XBLNR = "";
+                header.USNAM = dtH.Rows[0]["staffcode"].ToString();
+                List<GOODISSUEIN_ITEMS> items = new List<GOODISSUEIN_ITEMS>();
+                if (dtL.Rows.Count > 0)
+                {
+                    items = (from DataRow dr in dtL.Rows
+                             select new GOODISSUEIN_ITEMS()
+                             {
+                                 POSGIITEMNO = dr["DocDetailID"].ToString(),
+                                 RESITEMNO = "",// dr["RESITEMNO"].ToString(),
+                                 MATNR = dr["ProductCode"].ToString(),
+                                 SWERKS = dr["ShopCode"].ToString(),
+                                 RWERKS = dr["ToShopCode"].ToString(),
+                                 //MENGE = dr["Qty"].ToString(),
+                                 MENGE = Convert.ToDecimal(dr["Qty"]).ToString(PropertyTextValue),
+                                 MEINS = dr["UnitName"].ToString(),
+                                 SGTXT = "",
+                             }).ToList();
+                }
+                header.ITEMS = items;
+            }
+            GOODISSUEIN_ORDER adjust = new GOODISSUEIN_ORDER();
+            adjust.HEADER = header;
+
+            data.STOCK_ADJUST = adjust;
+            return data;
+        }
+
+        public async Task<PREFINISHDOCUMENT> PrefinishAsync(string documentKey, string docTypeCode, int docType)
+        {
+
+            PREFINISHDOCUMENT data = new PREFINISHDOCUMENT();
+            DataTable dtH = new DataTable();
+            DataTable dtL = new DataTable();
+
+            dtH = await Task.Run(() => GetDocumentHeader(documentKey));
+            if (docType == 1001)
+            {
+                dtL = await Task.Run(() => GetDocumentDetail(documentKey));
+            }
+            else
+            {
+                dtL = await Task.Run(() => GetDocumentDetail_Prefinish(documentKey));
+            }
+
+
+            DataTable dtPro = new DataTable();
+            string PropertyTextValue = "#,##0.00";
+            dtPro = await Task.Run(() => GetProgramPropertyValue(18));
+            try
+            {
+                if (dtPro.Rows[0]["PropertyTextValue"] != null)
+                {
+
+                    PropertyTextValue = dtPro.Rows[0]["PropertyTextValue"].ToString();
+                }
+                else
+                {
+                    PropertyTextValue = "#,##0.00";
+                }
+            }
+            catch (Exception ex)
+            {
+                PropertyTextValue = "#,##0.00";
+            }
+            PropertyTextValue = PropertyTextValue.Replace(",", "");
+            GOODISSUEIN_HEADER header = new GOODISSUEIN_HEADER();
+            if (dtH.Rows.Count > 0)
+            {
+                int docTypeId = Convert.ToInt32(dtH.Rows[0]["DocumentTypeId"]);
+                header.POSTYPE = docTypeCode;
+                header.POSDOCITEM = dtH.Rows[0]["documentno"].ToString();
+                header.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                if (docTypeId == 3)
+                {
+                    header.RESNO = dtH.Rows[0]["documentnoref"].ToString();
+                }
+                else
+                {
+                    header.RESNO = "";
+                }
+                header.BUDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                header.XBLNR = "";
+                header.USNAM = dtH.Rows[0]["staffcode"].ToString();
+                List<GOODISSUEIN_ITEMS> items = new List<GOODISSUEIN_ITEMS>();
+                if (dtL.Rows.Count > 0)
+                {
+                    items = (from DataRow dr in dtL.Rows
+                             select new GOODISSUEIN_ITEMS()
+                             {
+                                 POSGIITEMNO = dr["DocDetailID"].ToString(),
+                                 RESITEMNO = "",// dr["RESITEMNO"].ToString(),
+                                 MATNR = dr["ProductCode"].ToString(),
+                                 SWERKS = dr["ShopCode"].ToString(),
+                                 RWERKS = dr["ToShopCode"].ToString(),
+                                 //MENGE = dr["Qty"].ToString(),
+                                 MENGE = Convert.ToDecimal(dr["Qty"]).ToString(PropertyTextValue),
+                                 MEINS = dr["UnitName"].ToString(),
+                                 SGTXT = docType == 1002
+                                        ? (dr["Parent_MaterialCode"] == DBNull.Value
+                                            ? string.Empty
+                                            : dr["Parent_MaterialCode"].ToString())
+                                        : string.Empty
+
+                             }).ToList();
+                }
+                header.ITEMS = items;
+            }
+            GOODISSUEIN_ORDER adjust = new GOODISSUEIN_ORDER();
+            adjust.HEADER = header;
+
+            data.GI_PREFINISH = adjust;
+            return data;
+        }
+
+        public async Task<RETURNTTODC> TransferToDCAsync(string documentKey, string docTypeCode)
+        {
+
+            RETURNTTODC data = new RETURNTTODC();
+            DataTable dtH = new DataTable();
+            DataTable dtL = new DataTable();
+
+            dtH = await Task.Run(() => GetDocumentHeader(documentKey));
+            dtL = await Task.Run(() => GetDocumentDetail(documentKey));
+
+            DataTable dtPro = new DataTable();
+            string PropertyTextValue = "#,##0.00";
+            dtPro = await Task.Run(() => GetProgramPropertyValue(18));
+            try
+            {
+                if (dtPro.Rows[0]["PropertyTextValue"] != null)
+                {
+
+                    PropertyTextValue = dtPro.Rows[0]["PropertyTextValue"].ToString();
+                }
+                else
+                {
+                    PropertyTextValue = "#,##0.00";
+                }
+            }
+            catch (Exception ex)
+            {
+                PropertyTextValue = "#,##0.00";
+            }
+            PropertyTextValue = PropertyTextValue.Replace(",", "");
+            GOODISSUEIN_HEADER header = new GOODISSUEIN_HEADER();
+            if (dtH.Rows.Count > 0)
+            {
+                int docTypeId = Convert.ToInt32(dtH.Rows[0]["DocumentTypeId"]);
+                header.POSTYPE = docTypeCode;
+                header.POSDOCITEM = dtH.Rows[0]["documentno"].ToString();
+                header.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                if (docTypeId == 3)
+                {
+                    header.RESNO = dtH.Rows[0]["documentnoref"].ToString();
+                }
+                else
+                {
+                    header.RESNO = "";
+                }
+                header.BUDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                header.XBLNR = "";
+                header.USNAM = dtH.Rows[0]["staffcode"].ToString();
+                List<GOODISSUEIN_ITEMS> items = new List<GOODISSUEIN_ITEMS>();
+                if (dtL.Rows.Count > 0)
+                {
+                    items = (from DataRow dr in dtL.Rows
+                             select new GOODISSUEIN_ITEMS()
+                             {
+                                 POSGIITEMNO = dr["DocDetailID"].ToString(),
+                                 RESITEMNO = "",// dr["RESITEMNO"].ToString(),
+                                 MATNR = dr["ProductCode"].ToString(),
+                                 SWERKS = dr["ShopCode"].ToString(),
+                                 RWERKS = dr["ToShopCode"].ToString(),
+                                 //MENGE = dr["Qty"].ToString(),
+                                 MENGE = Convert.ToDecimal(dr["Qty"]).ToString(PropertyTextValue),
+                                 MEINS = dr["UnitName"].ToString(),
+                                 SGTXT = "",
+                             }).ToList();
+                }
+                header.ITEMS = items;
+            }
+            GOODISSUEIN_ORDER adjust = new GOODISSUEIN_ORDER();
+            adjust.HEADER = header;
+
+            data.RETURNT_TO_DC = adjust;
+            return data;
+        }
+        public async Task<RETURNTTOSLOC> TransferToSLOCAsync(string documentKey, string docTypeCode)
+        {
+
+            RETURNTTOSLOC data = new RETURNTTOSLOC();
+            DataTable dtH = new DataTable();
+            DataTable dtL = new DataTable();
+
+            dtH = await Task.Run(() => GetDocumentHeader(documentKey));
+            dtL = await Task.Run(() => GetDocumentDetail(documentKey));
+
+            DataTable dtPro = new DataTable();
+            string PropertyTextValue = "#,##0.00";
+            dtPro = await Task.Run(() => GetProgramPropertyValue(18));
+            try
+            {
+                if (dtPro.Rows[0]["PropertyTextValue"] != null)
+                {
+
+                    PropertyTextValue = dtPro.Rows[0]["PropertyTextValue"].ToString();
+                }
+                else
+                {
+                    PropertyTextValue = "#,##0.00";
+                }
+            }
+            catch (Exception ex)
+            {
+                PropertyTextValue = "#,##0.00";
+            }
+            PropertyTextValue = PropertyTextValue.Replace(",", "");
+            GOODISSUEIN_HEADER header = new GOODISSUEIN_HEADER();
+            if (dtH.Rows.Count > 0)
+            {
+                int docTypeId = Convert.ToInt32(dtH.Rows[0]["DocumentTypeId"]);
+                header.POSTYPE = docTypeCode;
+                header.POSDOCITEM = dtH.Rows[0]["documentno"].ToString();
+                header.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                if (docTypeId == 3)
+                {
+                    header.RESNO = dtH.Rows[0]["documentnoref"].ToString();
+                }
+                else
+                {
+                    header.RESNO = "";
+                }
+                header.BUDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                header.XBLNR = "";
+                header.USNAM = dtH.Rows[0]["staffcode"].ToString();
+                List<GOODISSUEIN_ITEMS> items = new List<GOODISSUEIN_ITEMS>();
+                if (dtL.Rows.Count > 0)
+                {
+                    items = (from DataRow dr in dtL.Rows
+                             select new GOODISSUEIN_ITEMS()
+                             {
+                                 POSGIITEMNO = dr["DocDetailID"].ToString(),
+                                 RESITEMNO = "",// dr["RESITEMNO"].ToString(),
+                                 MATNR = dr["ProductCode"].ToString(),
+                                 SWERKS = dr["ShopCode"].ToString(),
+                                 RWERKS = dr["ToShopCode"].ToString(),
+                                 //MENGE = dr["Qty"].ToString(),
+                                 MENGE = Convert.ToDecimal(dr["Qty"]).ToString(PropertyTextValue),
+                                 MEINS = dr["UnitName"].ToString(),
+                                 SGTXT = "",
+                             }).ToList();
+                }
+                header.ITEMS = items;
+            }
+            GOODISSUEIN_ORDER adjust = new GOODISSUEIN_ORDER();
+            adjust.HEADER = header;
+
+            data.TRANSFER_SLOC = adjust;
+            return data;
+        }
+
+
         #endregion
 
         #region "Request Order From SAP"
@@ -106,10 +441,30 @@ namespace Doikham.API.Data
             REQUESTDOCUMENT data = new REQUESTDOCUMENT();
             DataTable dtH = new DataTable();
             DataTable dtL = new DataTable();
+            DataTable dtPro = new DataTable();
+            string PropertyTextValue = "#,##0.00";
 
             dtH = await Task.Run(() => GetDocumentHeader(documentKey));
             dtL = await Task.Run(() => GetDocumentDetail(documentKey));
+            dtPro = await Task.Run(() => GetProgramPropertyValue(18));
+            try
+            {
+                if (dtPro.Rows[0]["PropertyTextValue"] != null)
+                {
 
+                    PropertyTextValue = dtPro.Rows[0]["PropertyTextValue"].ToString();
+                }
+                else
+                {
+                    PropertyTextValue = "#,##0.00";
+                }
+            }
+            catch (Exception ex)
+            {
+                PropertyTextValue = "#,##0.00";
+            }
+
+            PropertyTextValue = PropertyTextValue.Replace(",", "");
             REQUEST_HEADER header = new REQUEST_HEADER();
             if (dtH.Rows.Count > 0)
             {
@@ -128,8 +483,7 @@ namespace Doikham.API.Data
                                  MAKTX = dr["ProductName"].ToString(),
                                  WERKS = dr["ShopCode"].ToString(),
                                  SUPPLANT = dr["ToShopCode"].ToString(),
-                                 //MENGE = dr["SmallQty"].ToString(),
-                                 MENGE = Convert.ToDecimal(dr["SmallQty"]).ToString("0.000"),
+                                 MENGE = Convert.ToDecimal(dr["SmallQty"]).ToString(PropertyTextValue),
                                  MEINS = dr["SmallUnitName"].ToString(),
                                  DELDATE = Convert.ToDateTime(dr["DueDate"]).ToString("yyyyMMdd", invC),
                                  SGTXT = "",
@@ -164,8 +518,10 @@ namespace Doikham.API.Data
             if (data.HEADER.ITEMS.Count > 0)
             {
                 string ToShopCode = data.HEADER.ITEMS[0].WERKS;
+                string ToSLOC = data.HEADER.ITEMS[0].LGORT;
                 shopId = 1;
-                toShopId = await Task.Run(() => GetInventoryID(ToShopCode));
+                //toShopId = await Task.Run(() => GetInventoryID(ToShopCode));
+                toShopId = await Task.Run(() => GetInventoryIDERP(ToShopCode, ToSLOC));
 
                 DataTable dtT = new DataTable();
                 dtT = await Task.Run(() => GetDocumentType(documentTypeId));
@@ -211,7 +567,7 @@ namespace Doikham.API.Data
                         int vatPercent = 7;
 
                         DateTime syncDate = DateTime.Now;
-                        string docDate = syncDate.ToString("yyyy-MM-dd",invC);
+                        string docDate = syncDate.ToString("yyyy-MM-dd", invC);
                         documentYear = syncDate.Year;
                         documentMonth = syncDate.Month;
                         documentDay = syncDate.Day;
@@ -326,7 +682,26 @@ namespace Doikham.API.Data
             dtH = await Task.Run(() => GetDocumentHeader(documentKey));
             dtL = await Task.Run(() => GetDocumentRODetail(documentKey));
 
-            
+            DataTable dtPro = new DataTable();
+            string PropertyTextValue = "#,##0.00";
+            dtPro = await Task.Run(() => GetProgramPropertyValue(18));
+            try
+            {
+                if (dtPro.Rows[0]["PropertyTextValue"] != null)
+                {
+
+                    PropertyTextValue = dtPro.Rows[0]["PropertyTextValue"].ToString();
+                }
+                else
+                {
+                    PropertyTextValue = "#,##0.00";
+                }
+            }
+            catch (Exception ex)
+            {
+                PropertyTextValue = "#,##0.00";
+            }
+            PropertyTextValue = PropertyTextValue.Replace(",", "");
             GOODRECEIPT_HEADER header = new GOODRECEIPT_HEADER();
             if (dtH.Rows.Count > 0)
             {
@@ -346,11 +721,11 @@ namespace Doikham.API.Data
                                  MATNR = dr["ProductCode"].ToString(),
                                  WERKS = dr["ShopCode"].ToString(),
                                  LIFNR = "",
-                                 SWERKS ="",
-                                 MENGE = Convert.ToDecimal(dr["SmallQty"]).ToString("0.000"),
+                                 SWERKS = "",
+                                 MENGE = Convert.ToDecimal(dr["SmallQty"]).ToString(PropertyTextValue),
                                  MEINS = dr["SmallUnitName"].ToString(),
                                  NETPR = "0.000",
-                                 NETWR ="0.000",
+                                 NETWR = "0.000",
                                  EBELN = dr["EBELN"].ToString(),
                                  EBELP = dr["EBELP"]?.ToString().Trim().PadLeft(5, '0'),
                                  SGTXT = "",
@@ -533,7 +908,26 @@ namespace Doikham.API.Data
 
             dtH = await Task.Run(() => GetDocumentHeader(documentKey));
             dtL = await Task.Run(() => GetDocumentDetail(documentKey));
+            DataTable dtPro = new DataTable();
+            string PropertyTextValue = "#,##0.00";
+            dtPro = await Task.Run(() => GetProgramPropertyValue(18));
+            try
+            {
+                if (dtPro.Rows[0]["PropertyTextValue"] != null)
+                {
 
+                    PropertyTextValue = dtPro.Rows[0]["PropertyTextValue"].ToString();
+                }
+                else
+                {
+                    PropertyTextValue = "#,##0.00";
+                }
+            }
+            catch (Exception ex)
+            {
+                PropertyTextValue = "#,##0.00";
+            }
+            PropertyTextValue = PropertyTextValue.Replace(",", "");
             GOODRECEIPT_HEADER header = new GOODRECEIPT_HEADER();
             if (dtH.Rows.Count > 0)
             {
@@ -555,7 +949,7 @@ namespace Doikham.API.Data
                                  LIFNR = dr["VendorCode"].ToString(),
                                  SWERKS = $"{dr["ShopCode"].ToString()}-{dr["sloc"].ToString()}",
                                  //MENGE = dr["Qty"].ToString(),
-                                 MENGE = Convert.ToDecimal(dr["Qty"]).ToString("0.000"),
+                                 MENGE = Convert.ToDecimal(dr["Qty"]).ToString(PropertyTextValue),
                                  MEINS = dr["UnitName"].ToString(),
                                  NETPR = dr["ProductPricePerUnit"].ToString(),
                                  NETWR = dr["ProductTotalPrice"].ToString(),
@@ -581,7 +975,26 @@ namespace Doikham.API.Data
 
             dtH = await Task.Run(() => GetDocumentHeader(documentKey));
             dtL = await Task.Run(() => GetDocumentDetail(documentKey));
+            DataTable dtPro = new DataTable();
+            string PropertyTextValue = "#,##0.00";
+            dtPro = await Task.Run(() => GetProgramPropertyValue(18));
+            try
+            {
+                if (dtPro.Rows[0]["PropertyTextValue"] != null)
+                {
 
+                    PropertyTextValue = dtPro.Rows[0]["PropertyTextValue"].ToString();
+                }
+                else
+                {
+                    PropertyTextValue = "#,##0.00";
+                }
+            }
+            catch (Exception ex)
+            {
+                PropertyTextValue = "#,##0.00";
+            }
+            PropertyTextValue = PropertyTextValue.Replace(",", "");
             GOODRECEIPT_HEADER header = new GOODRECEIPT_HEADER();
             if (dtH.Rows.Count > 0)
             {
@@ -603,7 +1016,7 @@ namespace Doikham.API.Data
                                  LIFNR = dr["VendorCode"].ToString(),
                                  SWERKS = dr["ShopCode"].ToString(),
                                  //MENGE = dr["SmallQty"].ToString(),
-                                 MENGE = Convert.ToDecimal(dr["SmallQty"]).ToString("0.000"),
+                                 MENGE = Convert.ToDecimal(dr["SmallQty"]).ToString(PropertyTextValue),
                                  MEINS = dr["SmallUnitName"].ToString(),
                                  NETPR = dr["ProductPricePerUnit"].ToString(),
                                  NETWR = dr["ProductTotalPrice"].ToString(),
@@ -712,6 +1125,18 @@ namespace Doikham.API.Data
             }
             return id;
         }
+        private async Task<int> GetInventoryIDERP(string shopCode, string SLOC)
+        {
+            DataTable dt = new DataTable();
+            string queryStr = $"select * from shop_data where PTTShopCode='{shopCode}' and SLOC='{SLOC}'";
+            dt = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connString));
+            int id = 0;
+            if (dt.Rows.Count > 0)
+            {
+                id = Convert.ToInt32(dt.Rows[0]["shopid"]);
+            }
+            return id;
+        }
         private async Task<DataTable> GetDocumentType(int documentTypeId)
         {
             DataTable dt = new DataTable();
@@ -748,7 +1173,17 @@ namespace Doikham.API.Data
             dtL.TableName = "Detail";
             return dtL;
         }
-        private async Task<DataTable> GetDocumentDetail_SaleOrder(string documentKey, int shopId,string docDate)
+        private async Task<DataTable> GetDocumentDetail_Prefinish(string documentKey)
+        {
+            DataTable dtL = new DataTable();
+
+            string queryStr = $"select d.ShopCode,d.sloc,e.VendorCode, a.DocumentID,a.KeyShopID,a.DocumentKey,b.DocumentKey As POKey,a.DocumentYear,a.DocumentMonth,a.DocumentNo, b.DocumentNoRef,case when a.DocumentTypeID=25 and (po.SupplierMaterialCode is null or po.SupplierMaterialCode='') then b.DocumentNoRef else po.SupplierMaterialCode end As SupplierMaterialCode,a.DocumentDate,c.DocDetailID,case when a.DocumentTypeID=3 then c.DocDetailID else '' end As RESITEMNO, c.ProductCode,c.ProductName,c.ProductAmount As Qty,c.UnitSmallAmount As SmallQty,c.UnitName, 'EA' As SmallUnitName,c.ProductPricePerUnit,c.ProductNetPrice,c.ProductTotalPrice,LineNumber,s1.ShopCode As ToShopCode,s2.ShopCode As FromShopCode,a.DueDate,mc.Parent_MaterialID,mc.Parent_MaterialCode,mc.Parent_MaterialName from document a left join document b on a.DocumentIDRef = b.DocumentID and a.DocIDRefShopID = b.KeyShopID join docdetail c on a.DocumentID = c.DocumentID and a.KeyShopID = c.KeyShopID join shop_data d on a.ShopID = d.ShopID left join vendors e on a.VendorID = e.VendorID left join interface_document_fromsap po on a.DocumentIDRef=po.DocumentID and a.DocIDRefShopID=po.KeyShopID and c.ProductID=po.ProductID left join shop_data s1 on a.ToInvID = s1.ShopID left join shop_data s2 on a.FromInvID = s2.ShopID inner join pos_interface_materialcomponent mc on c.DocumentID=mc.child_DocID and c.KeyShopID=mc.child_keyshopid  and c.ProductID=mc.child_MaterialID where a.DocumentStatus = 2  and a.DocumentKey='{documentKey}' order by DocDetailID";
+            dtL = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connString));
+            dtL.TableName = "Detail";
+            return dtL;
+        }
+
+        private async Task<DataTable> GetDocumentDetail_SaleOrder(string documentKey, int shopId, string docDate)
         {
             DataTable dtL = new DataTable();
 
@@ -764,7 +1199,7 @@ namespace Doikham.API.Data
         {
             DataTable dtL = new DataTable();
 
-            string queryStr = $"select ROW_NUMBER() OVER (ORDER BY ro.DocDetailID) Row_num,ro.*,rq.DocumentNo As EBELN,rq.DocDetailID As EBELP,s.ShopID,s.ShopCode from (select a.DocumentID, a.KeyShopID, a.DocumentKey, a.DocIDRefShopID, a.DocumentIDRef, a.DocumentNo, a.DocumentNoRef, a.InvoiceRef, b.DocDetailID, b.ProductAmount, b.UnitSmallAmount as Qty,b.UnitSmallAmount as SmallQty, b.UnitName, 'EA' As SmallUnitName, b.ProductID, b.ProductCode, b.ProductName, a.DocumentDate, a.ShopID from document a inner join docdetail b on a.DocumentKey= b.DocumentKey where DocumentTypeID = 25  and DocumentStatus = 2) as ro join shop_data s on ro.ShopID = s.ShopID left join(select a.DocumentID, a.KeyShopID, a.DocumentKey, a.DocIDRefShopID, a.DocumentIDRef, a.DocumentNo, a.DocumentNoRef, a.InvoiceRef, b.DocDetailID, b.ProductAmount, b.UnitSmallAmount,b.UnitSmallAmount as SmallQty, b.UnitName, 'EA' As SmallUnitName, b.ProductID, b.ProductCode, b.ProductName, a.DocumentDate from document a inner join docdetail b on a.DocumentKey= b.DocumentKey where DocumentTypeID = 3  and DocumentStatus = 2) as wt on ro.DocumentIDRef = wt.documentid and ro.DocIDRefShopID = wt.KeyShopID and ro.ProductCode = wt.ProductCode left join (select a.DocumentID, a.KeyShopID, a.DocumentKey, a.DocIDRefShopID, a.DocumentIDRef, a.DocumentNo, a.DocumentNoRef, a.InvoiceRef, b.DocDetailID, b.ProductAmount, b.UnitSmallAmount,b.UnitSmallAmount  As SmallQty, b.UnitName, 'EA' As SmallUnitName, b.ProductID, b.ProductCode, b.ProductName, a.DocumentDate from document a inner join docdetail b on a.DocumentKey= b.DocumentKey where DocumentTypeID = 17 and DocumentStatus = 2) as rq on wt.InvoiceRef = rq.DocumentNoRef and wt.ProductCode = rq.ProductCode where ro.DocumentKey = '{documentKey}' order by ro.DocDetailID";
+            string queryStr = $"select ROW_NUMBER() OVER (ORDER BY ro.DocDetailID) Row_num,ro.*,wt.InvoiceRef  As EBELN,rq.DocDetailID As EBELP,s.ShopID,s.ShopCode from (select a.DocumentID, a.KeyShopID, a.DocumentKey, a.DocIDRefShopID, a.DocumentIDRef, a.DocumentNo, a.DocumentNoRef, a.InvoiceRef, b.DocDetailID, b.ProductAmount, b.UnitSmallAmount as Qty,b.UnitSmallAmount as SmallQty, b.UnitName, 'EA' As SmallUnitName, b.ProductID, b.ProductCode, b.ProductName, a.DocumentDate, a.ShopID from document a inner join docdetail b on a.DocumentKey= b.DocumentKey where DocumentTypeID = 25  and DocumentStatus = 2) as ro join shop_data s on ro.ShopID = s.ShopID left join(select a.DocumentID, a.KeyShopID, a.DocumentKey, a.DocIDRefShopID, a.DocumentIDRef, a.DocumentNo, a.DocumentNoRef, a.InvoiceRef, b.DocDetailID, b.ProductAmount, b.UnitSmallAmount,b.UnitSmallAmount as SmallQty, b.UnitName, 'EA' As SmallUnitName, b.ProductID, b.ProductCode, b.ProductName, a.DocumentDate from document a inner join docdetail b on a.DocumentKey= b.DocumentKey where DocumentTypeID = 3  and DocumentStatus = 2) as wt on ro.DocumentIDRef = wt.documentid and ro.DocIDRefShopID = wt.KeyShopID and ro.ProductCode = wt.ProductCode left join (select a.DocumentID, a.KeyShopID, a.DocumentKey, a.DocIDRefShopID, a.DocumentIDRef, a.DocumentNo, a.DocumentNoRef, a.InvoiceRef, b.DocDetailID, b.ProductAmount, b.UnitSmallAmount,b.UnitSmallAmount  As SmallQty, b.UnitName, 'EA' As SmallUnitName, b.ProductID, b.ProductCode, b.ProductName, a.DocumentDate from document a inner join docdetail b on a.DocumentKey= b.DocumentKey where DocumentTypeID = 17 and DocumentStatus = 2) as rq on wt.InvoiceRef = rq.DocumentNoRef and wt.ProductCode = rq.ProductCode where ro.DocumentKey = '{documentKey}' order by ro.DocDetailID";
             dtL = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connString));
             dtL.TableName = "Detail";
             return dtL;
@@ -798,7 +1233,7 @@ namespace Doikham.API.Data
 
             return dt;
         }
-        private async Task<DataTable> CheckDoDocDetailID( int DocumentId, int KeyShopId, int DocDetailID,  SqlConnection connection, SqlTransaction transaction)
+        private async Task<DataTable> CheckDoDocDetailID(int DocumentId, int KeyShopId, int DocDetailID, SqlConnection connection, SqlTransaction transaction)
         {
             DataTable dt = new DataTable();
             string queryStr = $"select * from docdetail where DocumentID={DocumentId} and keyshopId={KeyShopId} and DocDetailID={DocDetailID}";
@@ -828,7 +1263,7 @@ namespace Doikham.API.Data
             return id;
         }
 
-        private async Task<int> UpdateDocumentDetail(int docDetailID, int documentID, int keyShopID,   decimal productAmount,   decimal unitSmallAmount,SqlConnection connection, SqlTransaction transaction)
+        private async Task<int> UpdateDocumentDetail(int docDetailID, int documentID, int keyShopID, decimal productAmount, decimal unitSmallAmount, SqlConnection connection, SqlTransaction transaction)
         {
             int id = 0;
             string queryStr = $"update docdetail set ProductAmount={productAmount}, UnitSmallAmount={unitSmallAmount} where docdetailid={docDetailID} and documentid={documentID} and keyshopid={keyShopID}; ";
@@ -844,7 +1279,7 @@ namespace Doikham.API.Data
             DataTable dtL = new DataTable();
 
             dtH = await Task.Run(() => GetDocumentHeader(documentKey));
-            
+
 
             GOODISSUEIN_HEADER header = new GOODISSUEIN_HEADER();
             if (dtH.Rows.Count > 0)
@@ -899,7 +1334,14 @@ namespace Doikham.API.Data
             data.GOODS_ISSUE_IN = adjust;
             return data;
         }
- 
+        private async Task<DataTable> GetProgramPropertyValue(int properID)
+        {
+            DataTable dtH = new DataTable();
+            string queryStr = $"select PropertyID,PropertyValue,PropertyTextValue from programpropertyvalue where PropertyID={properID}";
+            dtH = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connString));
+            dtH.TableName = "programpropertyvalue";
+            return dtH;
+        }
 
         #endregion
     }

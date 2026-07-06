@@ -33,7 +33,7 @@ namespace Doikham.Shared.Database
         public string BWART { get; set; }
         public string MATNR { get; set; }
         public string WERKS { get; set; }
-        public decimal LGORT { get; set; }
+        public string LGORT { get; set; }
         public string CHARG { get; set; }
         public string MENGE { get; set; }
         public string MEINS { get; set; }

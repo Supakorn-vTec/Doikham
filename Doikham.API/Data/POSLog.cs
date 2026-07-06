@@ -13,6 +13,10 @@ namespace Doikham.API.Data
 
         public Task<DataTable> GetLog(int documentTypeId);
         public Task<DataTable> GetLog();
+        public Task<DataTable> GetAJLog();
+        public Task<DataTable> GetPNLog(int docTypeID);
+        public Task<DataTable> GetToDCLog();
+        public Task<DataTable> GetToSLOCLog();
         public Task<DataTable> GetLog(int documentTypeId, string documentDate);
         public Task<string> SetLog(string tranKey, int shopID, string docDate, int docType, string statusCode, string msgLog);
         public Task<int> SetResponseLog(string uuid, string tranKey, int shopID, int docType, string statusCode, string msgLog);
@@ -57,6 +61,32 @@ namespace Doikham.API.Data
             string queryStr = $"select a.ShopId,a.DocumentID,a.KeyShopID,a.DocumentKey,a.DocumentYear,a.DocumentMonth,a.DocumentNo,b.DocumentNoRef,a.DocumentDate,d.DocumentTypeHeader,d.MovementInStock As DocTypeCode,a.DocumentTypeID from document a left join document b on a.DocumentIDRef=b.DocumentID and a.DocIDRefShopID=b.KeyShopID left join SAPBOne_Interface_Log c on a.ShopID=c.ShopID and a.DocumentKey=c.TranKey join (select DocumentTypeID,DocumentTypeHeader,DocumentTypeName,MovementInStock from documenttype where IsAddReduceDoc=1) d on a.DocumentTypeID=d.DocumentTypeID where a.DocumentStatus=2  and c.UUID is null union select a.ShopId,a.DocumentID,a.KeyShopID,a.DocumentKey,a.DocumentYear,a.DocumentMonth,a.DocumentNo,b.DocumentNo As DocumentNoRef,a.DocumentDate,d.DocumentTypeHeader,d.MovementInStock As DocTypeCode,a.DocumentTypeID from document a left join document b on a.DocumentIDRef=b.DocumentID and a.DocIDRefShopID=b.KeyShopID left join SAPBOne_Interface_Log c on a.ShopID=c.ShopID and a.DocumentKey=c.TranKey join (select DocumentTypeID,DocumentTypeHeader,DocumentTypeName,MovementInStock from documenttype where DocumentTypeID=3) d on a.DocumentTypeID=d.DocumentTypeID where a.DocumentStatus=2 and a.ShopID<>1 and a.DocumentTypeID=3  and c.UUID is null  union select a.ShopId,a.DocumentID,a.KeyShopID,a.DocumentKey,a.DocumentYear,a.DocumentMonth,a.DocumentNo,b.DocumentNo As DocumentNoRef,a.DocumentDate,d.DocumentTypeHeader,d.MovementInStock As DocTypeCode,a.DocumentTypeID from document a left join document b on a.DocumentIDRef=b.DocumentID and a.DocIDRefShopID=b.KeyShopID left join SAPBOne_Interface_Log c on a.ShopID=c.ShopID and a.DocumentKey=c.TranKey join (select DocumentTypeID,DocumentTypeHeader,DocumentTypeName,MovementInStock from documenttype where DocumentTypeID=1002) d on a.DocumentTypeID=d.DocumentTypeID where a.DocumentStatus=2 and a.DocumentTypeID=1002  and c.UUID is null";
             return dt = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connString));
         }
+        public async Task<DataTable> GetToDCLog()
+        {
+            DataTable dt = new DataTable();
+            string queryStr = $"select a.ShopId,a.DocumentID,a.KeyShopID,a.DocumentKey,a.DocumentYear,a.DocumentMonth,a.DocumentNo,b.DocumentNo As DocumentNoRef,a.DocumentDate,d.DocumentTypeHeader,d.MovementInStock As DocTypeCode,a.DocumentTypeID from document a left join document b on a.DocumentIDRef=b.DocumentID and a.DocIDRefShopID=b.KeyShopID left join SAPBOne_Interface_Log c on a.ShopID=c.ShopID and a.DocumentKey=c.TranKey join (select DocumentTypeID,DocumentTypeHeader,DocumentTypeName,MovementInStock from documenttype where DocumentTypeID=3) d on a.DocumentTypeID=d.DocumentTypeID where a.DocumentStatus=2 and  a.DocumentTypeID=3  and a.ToInvID=1  and c.UUID is null";
+            return dt = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connString));
+        }
+        public async Task<DataTable> GetToSLOCLog()
+        {
+            DataTable dt = new DataTable();
+            string queryStr = $"select a.ShopId,a.DocumentID,a.KeyShopID,a.DocumentKey,a.DocumentYear,a.DocumentMonth,a.DocumentNo,b.DocumentNo As DocumentNoRef,a.DocumentDate,d.DocumentTypeHeader,d.MovementInStock As DocTypeCode,a.DocumentTypeID from document a left join document b on a.DocumentIDRef=b.DocumentID and a.DocIDRefShopID=b.KeyShopID left join SAPBOne_Interface_Log c on a.ShopID=c.ShopID and a.DocumentKey=c.TranKey join (select DocumentTypeID,DocumentTypeHeader,DocumentTypeName,MovementInStock from documenttype where DocumentTypeID=3) d on a.DocumentTypeID=d.DocumentTypeID where a.DocumentStatus=2 and a.ShopID<>1 and a.DocumentTypeID=3 and a.ToInvID<>1  and c.UUID is null";
+            return dt = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connString));
+        }
+
+        public async Task<DataTable> GetAJLog()
+        {
+            DataTable dt = new DataTable();
+            string queryStr = $"select a.ShopId,a.DocumentID,a.KeyShopID,a.DocumentKey,a.DocumentYear,a.DocumentMonth,a.DocumentNo,b.DocumentNoRef,a.DocumentDate,d.DocumentTypeHeader,d.MovementInStock As DocTypeCode,a.DocumentTypeID from document a left join document b on a.DocumentIDRef=b.DocumentID and a.DocIDRefShopID=b.KeyShopID left join SAPBOne_Interface_Log c on a.ShopID=c.ShopID and a.DocumentKey=c.TranKey join (select DocumentTypeID,DocumentTypeHeader,DocumentTypeName,MovementInStock from documenttype where IsAddReduceDoc=1) d on a.DocumentTypeID=d.DocumentTypeID where a.DocumentStatus=2  and c.UUID is null";
+            return dt = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connString));
+        }
+        public async Task<DataTable> GetPNLog(int docTypeID)
+        {
+            DataTable dt = new DataTable();
+            string queryStr = $"select a.ShopId,a.DocumentID,a.KeyShopID,a.DocumentKey,a.DocumentYear,a.DocumentMonth,a.DocumentNo,b.DocumentNo As DocumentNoRef,a.DocumentDate,d.DocumentTypeHeader,d.MovementInStock As DocTypeCode,a.DocumentTypeID from document a left join document b on a.DocumentIDRef=b.DocumentID and a.DocIDRefShopID=b.KeyShopID left join SAPBOne_Interface_Log c on a.ShopID=c.ShopID and a.DocumentKey=c.TranKey join (select DocumentTypeID,DocumentTypeHeader,DocumentTypeName,MovementInStock from documenttype where DocumentTypeID={docTypeID}) d on a.DocumentTypeID=d.DocumentTypeID where a.DocumentStatus=2 and a.DocumentTypeID={docTypeID}  and c.UUID is null";
+            return dt = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connString));
+        }
+
         public async Task<DataTable> GetInterfaceDocType()
         {
             DataTable dt = new DataTable();

@@ -328,6 +328,7 @@ namespace Doikham.API.Controllers
                 return StatusCode((int)HttpStatusCode.InternalServerError, resData);
             }
         }
+        
         [HttpPost("[action]")]
         public async Task<ActionResult> TransferOrder([FromBody]GOODISSUEOUTDOCUMENT data)
         {
@@ -352,6 +353,7 @@ namespace Doikham.API.Controllers
                 return StatusCode((int)HttpStatusCode.InternalServerError, resData);
             }
         }
+        
         [HttpPost("[action]")]
         public async Task<ActionResult> TransOrderRecipts()
         {
@@ -370,7 +372,7 @@ namespace Doikham.API.Controllers
                 {
                     for (int i = 0; i < dtLog.Rows.Count; i++)
                     {
-                        documentKey = dtLog.Rows[i]["documentkey"].ToString();
+                        documentKey =  dtLog.Rows[i]["documentkey"].ToString();
                         data = await Task.Run(() => repo.TransferOrderReciptAsync(documentKey));
                         string json = JsonConvert.SerializeObject(data);
 
@@ -422,12 +424,12 @@ namespace Doikham.API.Controllers
             string docTypeCode = "";
             try
             {
-                GOODISSUEINDOCUMENT data = new GOODISSUEINDOCUMENT();
+                STOCKADJUST data = new STOCKADJUST();
                 string action = "GOODSISSUE";
                 string documentKey = "";
 
                 DataTable dtLog = new DataTable();
-                dtLog = await Task.Run(() => repoLog.GetLog());
+                dtLog = await Task.Run(() => repoLog.GetAJLog());
                 if (dtLog.Rows.Count > 0)
                 {
                     for (int i = 0; i < dtLog.Rows.Count; i++)
@@ -436,7 +438,7 @@ namespace Doikham.API.Controllers
                         docType = Convert.ToInt32(dtLog.Rows[i]["documenttypeid"]);
                         docTypeCode = dtLog.Rows[i]["DocumentTypeHeader"].ToString();
 
-                        data = await Task.Run(() => repo.AdjustOrderAsync(documentKey, docTypeCode));
+                        data = await Task.Run(() => repo.AdjustStockAsync(documentKey, docTypeCode));
                         string json = JsonConvert.SerializeObject(data);
 
                         int shopID = Convert.ToInt32(dtLog.Rows[i]["shopid"]);
@@ -476,6 +478,267 @@ namespace Doikham.API.Controllers
                 return StatusCode((int)HttpStatusCode.InternalServerError, resData);
             }
         }
+
+        [HttpPost("[action]")]
+        public async Task<ActionResult> PrefinishOrder_BatchOUT()
+        {
+
+            RESPONSEDATA resData = new RESPONSEDATA();
+            RESPONSE response = new RESPONSE();
+            int docType = 1002;
+            string docTypeCode = "";
+            try
+            {
+                PREFINISHDOCUMENT data = new PREFINISHDOCUMENT();
+                string action = "GOODSISSUE";
+                string documentKey = "";
+            
+                DataTable dtLog = new DataTable();
+                dtLog = await Task.Run(() => repoLog.GetPNLog(docType));
+                if (dtLog.Rows.Count > 0)
+                {
+                    for (int i = 0; i < dtLog.Rows.Count; i++)
+                    {
+                        documentKey = dtLog.Rows[i]["documentkey"].ToString();
+                        docType = Convert.ToInt32(dtLog.Rows[i]["documenttypeid"]);
+                        docTypeCode = dtLog.Rows[i]["DocumentTypeHeader"].ToString();
+
+                        data = await Task.Run(() => repo.PrefinishAsync(documentKey, docTypeCode, docType));
+                        string json = JsonConvert.SerializeObject(data);
+
+                        int shopID = Convert.ToInt32(dtLog.Rows[i]["shopid"]);
+                        string statusCode = "S";
+                        string docDate = "{ d'" + Convert.ToDateTime(dtLog.Rows[i]["documentDate"]).ToString("yyyy-MM-dd", invC) + "'} ";
+                        string uuid = await Task.Run(() => repoLog.SetLog(documentKey, shopID, docDate, docType, statusCode, json));
+
+                        if (enableSendDataToSAP == true)
+                        {
+                            HttpResponseMessage resFromSAP = await Task.Run(() => repoSAP.Post(action, json));
+                            var resMsg = await Task.Run(() => resFromSAP.Content.ReadAsStringAsync());
+                            var jsonLinq = JObject.Parse(resMsg);
+                            DataTable dt = new DataTable();
+                            dt = await Task.Run(() => repoSAP.ConvertResponseToDataTable(resFromSAP));
+                            var resStatusCode = "S";
+                            if (dt.Rows.Count > 0)
+                            {
+                                resStatusCode = dt.Rows[0]["TYPE"].ToString();
+                            }
+                            await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
+                        }
+                    }
+                }
+                response.TYPE = "S";
+                response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
+                response.MESSAGE = "Success";
+                resData.RESPONSE = response;
+                return Ok(resData);
+
+            }
+            catch (Exception e)
+            {
+                response.TYPE = "E";
+                response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
+                response.MESSAGE = e.Message;
+                resData.RESPONSE = response;
+                return StatusCode((int)HttpStatusCode.InternalServerError, resData);
+            }
+        }
+
+        [HttpPost("[action]")]
+        public async Task<ActionResult> PrefinishOrder_BatchIN()
+        {
+
+            RESPONSEDATA resData = new RESPONSEDATA();
+            RESPONSE response = new RESPONSE();
+            int docType = 1001;
+            string docTypeCode = "";
+            try
+            {
+                PREFINISHDOCUMENT data = new PREFINISHDOCUMENT();
+                string action = "GOODSISSUE";
+                string documentKey = "";
+
+                DataTable dtLog = new DataTable();
+                dtLog = await Task.Run(() => repoLog.GetPNLog(docType));
+                if (dtLog.Rows.Count > 0)
+                {
+                    for (int i = 0; i < dtLog.Rows.Count; i++)
+                    {
+                        documentKey = dtLog.Rows[i]["documentkey"].ToString();
+                        docType = Convert.ToInt32(dtLog.Rows[i]["documenttypeid"]);
+                        docTypeCode = dtLog.Rows[i]["DocumentTypeHeader"].ToString();
+
+                        data = await Task.Run(() => repo.PrefinishAsync(documentKey, docTypeCode, docType));
+                        string json = JsonConvert.SerializeObject(data);
+
+                        int shopID = Convert.ToInt32(dtLog.Rows[i]["shopid"]);
+                        string statusCode = "S";
+                        string docDate = "{ d'" + Convert.ToDateTime(dtLog.Rows[i]["documentDate"]).ToString("yyyy-MM-dd", invC) + "'} ";
+                        string uuid = await Task.Run(() => repoLog.SetLog(documentKey, shopID, docDate, docType, statusCode, json));
+
+                        if (enableSendDataToSAP == true)
+                        {
+                            HttpResponseMessage resFromSAP = await Task.Run(() => repoSAP.Post(action, json));
+                            var resMsg = await Task.Run(() => resFromSAP.Content.ReadAsStringAsync());
+                            var jsonLinq = JObject.Parse(resMsg);
+                            DataTable dt = new DataTable();
+                            dt = await Task.Run(() => repoSAP.ConvertResponseToDataTable(resFromSAP));
+                            var resStatusCode = "S";
+                            if (dt.Rows.Count > 0)
+                            {
+                                resStatusCode = dt.Rows[0]["TYPE"].ToString();
+                            }
+                            await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
+                        }
+                    }
+                }
+                response.TYPE = "S";
+                response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
+                response.MESSAGE = "Success";
+                resData.RESPONSE = response;
+                return Ok(resData);
+
+            }
+            catch (Exception e)
+            {
+                response.TYPE = "E";
+                response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
+                response.MESSAGE = e.Message;
+                resData.RESPONSE = response;
+                return StatusCode((int)HttpStatusCode.InternalServerError, resData);
+            }
+        }
+
+        [HttpPost("[action]")]
+        public async Task<ActionResult> RETURNT_TO_DC()
+        {
+
+            RESPONSEDATA resData = new RESPONSEDATA();
+            RESPONSE response = new RESPONSE();
+            int docType = 0;
+            string docTypeCode = "RDC";
+            try
+            {
+                RETURNTTODC data = new RETURNTTODC();
+                string action = "GOODSISSUE";
+                string documentKey = "";
+
+                DataTable dtLog = new DataTable();
+                dtLog = await Task.Run(() => repoLog.GetToDCLog());
+                if (dtLog.Rows.Count > 0)
+                {
+                    for (int i = 0; i < dtLog.Rows.Count; i++)
+                    {
+                        documentKey = dtLog.Rows[i]["documentkey"].ToString();
+                        docType = Convert.ToInt32(dtLog.Rows[i]["documenttypeid"]);
+                        //docTypeCode = dtLog.Rows[i]["DocumentTypeHeader"].ToString();
+
+                        data = await Task.Run(() => repo.TransferToDCAsync(documentKey, docTypeCode));
+                        string json = JsonConvert.SerializeObject(data);
+
+                        int shopID = Convert.ToInt32(dtLog.Rows[i]["shopid"]);
+                        string statusCode = "S";
+                        string docDate = "{ d'" + Convert.ToDateTime(dtLog.Rows[i]["documentDate"]).ToString("yyyy-MM-dd", invC) + "'} ";
+                        string uuid = await Task.Run(() => repoLog.SetLog(documentKey, shopID, docDate, docType, statusCode, json));
+
+                        if (enableSendDataToSAP == true)
+                        {
+                            HttpResponseMessage resFromSAP = await Task.Run(() => repoSAP.Post(action, json));
+                            var resMsg = await Task.Run(() => resFromSAP.Content.ReadAsStringAsync());
+                            var jsonLinq = JObject.Parse(resMsg);
+                            DataTable dt = new DataTable();
+                            dt = await Task.Run(() => repoSAP.ConvertResponseToDataTable(resFromSAP));
+                            var resStatusCode = "S";
+                            if (dt.Rows.Count > 0)
+                            {
+                                resStatusCode = dt.Rows[0]["TYPE"].ToString();
+                            }
+                            await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
+                        }
+                    }
+                }
+                response.TYPE = "S";
+                response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
+                response.MESSAGE = "Success";
+                resData.RESPONSE = response;
+                return Ok(resData);
+
+            }
+            catch (Exception e)
+            {
+                response.TYPE = "E";
+                response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
+                response.MESSAGE = e.Message;
+                resData.RESPONSE = response;
+                return StatusCode((int)HttpStatusCode.InternalServerError, resData);
+            }
+        }
+
+        [HttpPost("[action]")]
+        public async Task<ActionResult> RETURNT_TO_SLOC()
+        {
+
+            RESPONSEDATA resData = new RESPONSEDATA();
+            RESPONSE response = new RESPONSE();
+            int docType = 0;
+            string docTypeCode = "TRF";
+            try
+            {
+                RETURNTTOSLOC data = new RETURNTTOSLOC();
+                string action = "GOODSISSUE";
+                string documentKey = "";
+
+                DataTable dtLog = new DataTable();
+                dtLog = await Task.Run(() => repoLog.GetToSLOCLog());
+                if (dtLog.Rows.Count > 0)
+                {
+                    for (int i = 0; i < dtLog.Rows.Count; i++)
+                    {
+                        documentKey = dtLog.Rows[i]["documentkey"].ToString();
+                        docType = Convert.ToInt32(dtLog.Rows[i]["documenttypeid"]);
+                        //docTypeCode = dtLog.Rows[i]["DocumentTypeHeader"].ToString();
+
+                        data = await Task.Run(() => repo.TransferToSLOCAsync(documentKey, docTypeCode));
+                        string json = JsonConvert.SerializeObject(data);
+
+                        int shopID = Convert.ToInt32(dtLog.Rows[i]["shopid"]);
+                        string statusCode = "S";
+                        string docDate = "{ d'" + Convert.ToDateTime(dtLog.Rows[i]["documentDate"]).ToString("yyyy-MM-dd", invC) + "'} ";
+                        string uuid = await Task.Run(() => repoLog.SetLog(documentKey, shopID, docDate, docType, statusCode, json));
+
+                        if (enableSendDataToSAP == true)
+                        {
+                            HttpResponseMessage resFromSAP = await Task.Run(() => repoSAP.Post(action, json));
+                            var resMsg = await Task.Run(() => resFromSAP.Content.ReadAsStringAsync());
+                            var jsonLinq = JObject.Parse(resMsg);
+                            DataTable dt = new DataTable();
+                            dt = await Task.Run(() => repoSAP.ConvertResponseToDataTable(resFromSAP));
+                            var resStatusCode = "S";
+                            if (dt.Rows.Count > 0)
+                            {
+                                resStatusCode = dt.Rows[0]["TYPE"].ToString();
+                            }
+                            await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
+                        }
+                    }
+                }
+                response.TYPE = "S";
+                response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
+                response.MESSAGE = "Success";
+                resData.RESPONSE = response;
+                return Ok(resData);
+
+            }
+            catch (Exception e)
+            {
+                response.TYPE = "E";
+                response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
+                response.MESSAGE = e.Message;
+                resData.RESPONSE = response;
+                return StatusCode((int)HttpStatusCode.InternalServerError, resData);
+            }
+        }
+
 
         //Resend Data To SAP
         [HttpPost("[action]")]

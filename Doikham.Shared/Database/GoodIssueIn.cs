@@ -4,7 +4,23 @@ using System.Text;
 
 namespace Doikham.Shared.Database
 {
-   public class GOODISSUEINDOCUMENT
+    public class RETURNTTOSLOC
+    {
+        public GOODISSUEIN_ORDER TRANSFER_SLOC { get; set; }
+    }
+    public class RETURNTTODC
+    {
+        public GOODISSUEIN_ORDER RETURNT_TO_DC { get; set; }
+    }
+    public class PREFINISHDOCUMENT
+    {
+        public GOODISSUEIN_ORDER GI_PREFINISH { get; set; }
+    }
+    public class STOCKADJUST
+    {
+        public GOODISSUEIN_ORDER STOCK_ADJUST { get; set; }
+    }
+    public class GOODISSUEINDOCUMENT
     {
         public GOODISSUEIN_ORDER GOODS_ISSUE_IN { get; set; }
     }
