@@ -16,6 +16,10 @@ namespace Doikham.Shared.Database
     {
         public GOODISSUEIN_ORDER GI_PREFINISH { get; set; }
     }
+    public class PREFINISHDOCUMENT_GR
+    {
+        public GOODISSUEIN_ORDER GR_PREFINISH { get; set; }
+    }
     public class STOCKADJUST
     {
         public GOODISSUEIN_ORDER STOCK_ADJUST { get; set; }

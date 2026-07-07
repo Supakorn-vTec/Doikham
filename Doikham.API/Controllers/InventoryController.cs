@@ -503,7 +503,7 @@ namespace Doikham.API.Controllers
                         docType = Convert.ToInt32(dtLog.Rows[i]["documenttypeid"]);
                         docTypeCode = dtLog.Rows[i]["DocumentTypeHeader"].ToString();
 
-                        data = await Task.Run(() => repo.PrefinishAsync(documentKey, docTypeCode, docType));
+                        data = await Task.Run(() => repo.GIPrefinishAsync(documentKey, docTypeCode));
                         string json = JsonConvert.SerializeObject(data);
 
                         int shopID = Convert.ToInt32(dtLog.Rows[i]["shopid"]);
@@ -554,7 +554,7 @@ namespace Doikham.API.Controllers
             string docTypeCode = "";
             try
             {
-                PREFINISHDOCUMENT data = new PREFINISHDOCUMENT();
+                PREFINISHDOCUMENT_GR data = new PREFINISHDOCUMENT_GR();
                 string action = "GOODSISSUE";
                 string documentKey = "";
 
@@ -568,7 +568,7 @@ namespace Doikham.API.Controllers
                         docType = Convert.ToInt32(dtLog.Rows[i]["documenttypeid"]);
                         docTypeCode = dtLog.Rows[i]["DocumentTypeHeader"].ToString();
 
-                        data = await Task.Run(() => repo.PrefinishAsync(documentKey, docTypeCode, docType));
+                        data = await Task.Run(() => repo.GRPrefinishAsync(documentKey, docTypeCode));
                         string json = JsonConvert.SerializeObject(data);
 
                         int shopID = Convert.ToInt32(dtLog.Rows[i]["shopid"]);

@@ -229,7 +229,7 @@ namespace Doikham.API.Data
         private async Task CreateProduct(SqlConnection connection, SqlTransaction transaction)
         {
             string queryStr = "";
-            queryStr = "insert into products(ProductID,ShopID,InventoryID,ProductGroupID,ProductDeptID,ProductCode,ProductName,ProductName1,ProductName6,ProductName7,ProductName8,SaleMode1,SaleMode2,VATType,VATCode,ProductUnitName,ProductActivate,DiscountAllow,InsertDate,UpdateDate,IsRetail,ProductName9,ProductName10) select((select case when max(ProductId) is null then 0 else max(ProductId) end from products) +ROW_NUMBER() OVER(ORDER BY aa.ProductId)) AS ProductID,2 As ShopID, 2 As InventoryID, aa.ProductGroupID,aa.ProductDeptID,aa.ProductCode,CONCAT(aa.ProductUnitName,'-', aa.ProductName) As ProductName, aa.ProductName As ProductName1, aa.ProductName6,aa.ProductName7,aa.ProductName8,1 As SaleMode1,1 As SaleMode2, aa.VATType,aa.VATCode,aa.ProductUnitName, 1 As ProductActivate, 1 As DiscountAllow, GETDATE() As InsertDate, GETDATE() As UpdateDate,1 As IsRetail,aa.ProductName9,aa.ProductName10 from SAPBOne_MasterData aa left join products bb on aa.ProductCode = bb.ProductCode where bb.ProductID is null";
+            queryStr = "insert into products(ProductID,ShopID,InventoryID,ProductGroupID,ProductDeptID,ProductCode,ProductName,ProductName1,ProductName6,ProductName7,ProductName8,SaleMode1,SaleMode2,VATType,VATCode,ProductUnitName,ProductActivate,DiscountAllow,InsertDate,UpdateDate,IsRetail,ProductName9,ProductName10) select((select case when max(ProductId) is null then 0 else max(ProductId) end from products) +ROW_NUMBER() OVER(ORDER BY aa.ProductId)) AS ProductID,2 As ShopID, 2 As InventoryID, aa.ProductGroupID,aa.ProductDeptID,aa.ProductCode,CONCAT(aa.ProductUnitName,'-', aa.ProductName) As ProductName, aa.ProductName As ProductName1, aa.ProductName6,aa.ProductName7,aa.ProductName8,1 As SaleMode1,1 As SaleMode2, aa.VATType,aa.VATCode,aa.ProductUnitName, 1 As ProductActivate, 1 As DiscountAllow, GETDATE() As InsertDate, GETDATE() As UpdateDate,1 As IsRetail,aa.ProductName9,aa.ProductName10 from SAPBOne_MasterData aa left join products bb on aa.ProductCode = bb.ProductCode where bb.ProductID is null  AND aa.ProductGroupID IS NOT NULL AND aa.ProductDeptID IS NOT NULL";
             await Task.Run(() => _dbHelper.ExecuteNonQuery(queryStr, connection, transaction));
 
             queryStr = "update aa set aa.ProductID=bb.ProductID from SAPBOne_MasterData aa join  products bb on aa.ProductCode=bb.ProductCode";
@@ -407,7 +407,7 @@ namespace Doikham.API.Data
             queryStr = "delete from products_barcode  where productbarcode in(select productname6 from SAPBOne_MasterData where (productname6 is not null and productname6 <>''))";
             await Task.Run(() => _dbHelper.ExecuteNonQuery(queryStr, connection, transaction));
 
-            queryStr = "insert into products_barcode (ProductID,ProductBarCode) select ProductID,ProductName6 As ProductBarCode from SAPBOne_MasterData where (productname6 is not null and productname6 <>'')";
+            queryStr = "INSERT INTO products_barcode (ProductID,ProductBarCode) SELECT p.ProductID,aa.ProductName6 FROM SAPBOne_MasterData aa INNER JOIN products p ON aa.ProductCode=p.ProductCode LEFT JOIN products_barcode pb ON pb.ProductID=p.ProductID AND pb.ProductBarCode=aa.ProductName6 WHERE aa.ProductName6 IS NOT NULL AND aa.ProductName6<>'' AND pb.ProductID IS NULL;";
             await Task.Run(() => _dbHelper.ExecuteNonQuery(queryStr, connection, transaction));
 
         }

@@ -22,7 +22,8 @@ namespace Doikham.API.Data
         public Task<GOODRECEIPTDOCUMENT> TransferOrderReciptAsync(string documentKey);
 
         public Task<STOCKADJUST> AdjustStockAsync(string documentKey, string docTypeCode);
-        public Task<PREFINISHDOCUMENT> PrefinishAsync(string documentKey, string docTypeCode,int docType);
+        public Task<PREFINISHDOCUMENT_GR> GRPrefinishAsync(string documentKey, string docTypeCode);
+        public Task<PREFINISHDOCUMENT> GIPrefinishAsync(string documentKey, string docTypeCode);
         public Task<RETURNTTODC> TransferToDCAsync(string documentKey, string docTypeCode);
         public Task<RETURNTTOSLOC> TransferToSLOCAsync(string documentKey, string docTypeCode);
         public Task<GOODISSUEINDOCUMENT> SalesOrderAsync(string documentKey, string docTypeCode, string shopCoe);
@@ -197,7 +198,7 @@ namespace Doikham.API.Data
             return data;
         }
 
-        public async Task<PREFINISHDOCUMENT> PrefinishAsync(string documentKey, string docTypeCode, int docType)
+        public async Task<PREFINISHDOCUMENT> GIPrefinishAsync(string documentKey, string docTypeCode)
         {
 
             PREFINISHDOCUMENT data = new PREFINISHDOCUMENT();
@@ -205,14 +206,7 @@ namespace Doikham.API.Data
             DataTable dtL = new DataTable();
 
             dtH = await Task.Run(() => GetDocumentHeader(documentKey));
-            if (docType == 1001)
-            {
-                dtL = await Task.Run(() => GetDocumentDetail(documentKey));
-            }
-            else
-            {
-                dtL = await Task.Run(() => GetDocumentDetail_Prefinish(documentKey));
-            }
+            dtL = await Task.Run(() => GetDocumentDetail_Prefinish(documentKey));
 
 
             DataTable dtPro = new DataTable();
@@ -267,11 +261,8 @@ namespace Doikham.API.Data
                                  //MENGE = dr["Qty"].ToString(),
                                  MENGE = Convert.ToDecimal(dr["Qty"]).ToString(PropertyTextValue),
                                  MEINS = dr["UnitName"].ToString(),
-                                 SGTXT = docType == 1002
-                                        ? (dr["Parent_MaterialCode"] == DBNull.Value
-                                            ? string.Empty
-                                            : dr["Parent_MaterialCode"].ToString())
-                                        : string.Empty
+                               
+                                   SGTXT = dr["Parent_MaterialCode"].ToString()
 
                              }).ToList();
                 }
@@ -283,7 +274,81 @@ namespace Doikham.API.Data
             data.GI_PREFINISH = adjust;
             return data;
         }
+        public async Task<PREFINISHDOCUMENT_GR> GRPrefinishAsync(string documentKey, string docTypeCode)
+        {
 
+            PREFINISHDOCUMENT_GR data = new PREFINISHDOCUMENT_GR();
+            DataTable dtH = new DataTable();
+            DataTable dtL = new DataTable();
+
+            dtH = await Task.Run(() => GetDocumentHeader(documentKey));
+            dtL = await Task.Run(() => GetDocumentDetail(documentKey));
+
+
+            DataTable dtPro = new DataTable();
+            string PropertyTextValue = "#,##0.00";
+            dtPro = await Task.Run(() => GetProgramPropertyValue(18));
+            try
+            {
+                if (dtPro.Rows[0]["PropertyTextValue"] != null)
+                {
+
+                    PropertyTextValue = dtPro.Rows[0]["PropertyTextValue"].ToString();
+                }
+                else
+                {
+                    PropertyTextValue = "#,##0.00";
+                }
+            }
+            catch (Exception ex)
+            {
+                PropertyTextValue = "#,##0.00";
+            }
+            PropertyTextValue = PropertyTextValue.Replace(",", "");
+            GOODISSUEIN_HEADER header = new GOODISSUEIN_HEADER();
+            if (dtH.Rows.Count > 0)
+            {
+                int docTypeId = Convert.ToInt32(dtH.Rows[0]["DocumentTypeId"]);
+                header.POSTYPE = docTypeCode;
+                header.POSDOCITEM = dtH.Rows[0]["documentno"].ToString();
+                header.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                if (docTypeId == 3)
+                {
+                    header.RESNO = dtH.Rows[0]["documentnoref"].ToString();
+                }
+                else
+                {
+                    header.RESNO = "";
+                }
+                header.BUDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                header.XBLNR = "";
+                header.USNAM = dtH.Rows[0]["staffcode"].ToString();
+                List<GOODISSUEIN_ITEMS> items = new List<GOODISSUEIN_ITEMS>();
+                if (dtL.Rows.Count > 0)
+                {
+                    items = (from DataRow dr in dtL.Rows
+                             select new GOODISSUEIN_ITEMS()
+                             {
+                                 POSGIITEMNO = dr["DocDetailID"].ToString(),
+                                 RESITEMNO = "",// dr["RESITEMNO"].ToString(),
+                                 MATNR = dr["ProductCode"].ToString(),
+                                 SWERKS = dr["ShopCode"].ToString(),
+                                 RWERKS = dr["ToShopCode"].ToString(),
+                                 //MENGE = dr["Qty"].ToString(),
+                                 MENGE = Convert.ToDecimal(dr["Qty"]).ToString(PropertyTextValue),
+                                 MEINS = dr["UnitName"].ToString(),
+                                 SGTXT = string.Empty
+
+                             }).ToList();
+                }
+                header.ITEMS = items;
+            }
+            GOODISSUEIN_ORDER adjust = new GOODISSUEIN_ORDER();
+            adjust.HEADER = header;
+
+            data.GR_PREFINISH = adjust;
+            return data;
+        }
         public async Task<RETURNTTODC> TransferToDCAsync(string documentKey, string docTypeCode)
         {
 
@@ -1177,7 +1242,7 @@ namespace Doikham.API.Data
         {
             DataTable dtL = new DataTable();
 
-            string queryStr = $"select d.ShopCode,d.sloc,e.VendorCode, a.DocumentID,a.KeyShopID,a.DocumentKey,b.DocumentKey As POKey,a.DocumentYear,a.DocumentMonth,a.DocumentNo, b.DocumentNoRef,case when a.DocumentTypeID=25 and (po.SupplierMaterialCode is null or po.SupplierMaterialCode='') then b.DocumentNoRef else po.SupplierMaterialCode end As SupplierMaterialCode,a.DocumentDate,c.DocDetailID,case when a.DocumentTypeID=3 then c.DocDetailID else '' end As RESITEMNO, c.ProductCode,c.ProductName,c.ProductAmount As Qty,c.UnitSmallAmount As SmallQty,c.UnitName, 'EA' As SmallUnitName,c.ProductPricePerUnit,c.ProductNetPrice,c.ProductTotalPrice,LineNumber,s1.ShopCode As ToShopCode,s2.ShopCode As FromShopCode,a.DueDate,mc.Parent_MaterialID,mc.Parent_MaterialCode,mc.Parent_MaterialName from document a left join document b on a.DocumentIDRef = b.DocumentID and a.DocIDRefShopID = b.KeyShopID join docdetail c on a.DocumentID = c.DocumentID and a.KeyShopID = c.KeyShopID join shop_data d on a.ShopID = d.ShopID left join vendors e on a.VendorID = e.VendorID left join interface_document_fromsap po on a.DocumentIDRef=po.DocumentID and a.DocIDRefShopID=po.KeyShopID and c.ProductID=po.ProductID left join shop_data s1 on a.ToInvID = s1.ShopID left join shop_data s2 on a.FromInvID = s2.ShopID inner join pos_interface_materialcomponent mc on c.DocumentID=mc.child_DocID and c.KeyShopID=mc.child_keyshopid  and c.ProductID=mc.child_MaterialID where a.DocumentStatus = 2  and a.DocumentKey='{documentKey}' order by DocDetailID";
+            string queryStr = $"select d.ShopCode,d.sloc,e.VendorCode, a.DocumentID,a.KeyShopID,a.DocumentKey,b.DocumentKey As POKey,a.DocumentYear,a.DocumentMonth,a.DocumentNo, b.DocumentNoRef,case when a.DocumentTypeID=25 and (po.SupplierMaterialCode is null or po.SupplierMaterialCode='') then b.DocumentNoRef else po.SupplierMaterialCode end As SupplierMaterialCode,a.DocumentDate,c.DocDetailID,case when a.DocumentTypeID=3 then c.DocDetailID else '' end As RESITEMNO, c.ProductCode,c.ProductName,c.ProductAmount As Qty,c.UnitSmallAmount As SmallQty,c.UnitName, 'EA' As SmallUnitName,c.ProductPricePerUnit,c.ProductNetPrice,c.ProductTotalPrice,LineNumber,s1.ShopCode As ToShopCode,s2.ShopCode As FromShopCode,a.DueDate,mc.Parent_MaterialID,mc.Parent_MaterialCode,mc.Parent_MaterialName from document a left join document b on a.DocumentIDRef = b.DocumentID and a.DocIDRefShopID = b.KeyShopID join docdetail c on a.DocumentID = c.DocumentID and a.KeyShopID = c.KeyShopID join shop_data d on a.ShopID = d.ShopID left join vendors e on a.VendorID = e.VendorID left join interface_document_fromsap po on a.DocumentIDRef=po.DocumentID and a.DocIDRefShopID=po.KeyShopID and c.ProductID=po.ProductID left join shop_data s1 on a.ToInvID = s1.ShopID left join shop_data s2 on a.FromInvID = s2.ShopID inner join pos_interface_materialcomponent mc on c.DocumentID=mc.child_DocID and c.KeyShopID=mc.child_keyshopid  and c.ProductID=mc.child_MaterialID  and c.DocDetailID=mc.Child_DocDetailID where a.DocumentStatus = 2  and a.DocumentKey='{documentKey}' order by DocDetailID";
             dtL = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connString));
             dtL.TableName = "Detail";
             return dtL;
