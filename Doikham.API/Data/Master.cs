@@ -213,7 +213,7 @@ namespace Doikham.API.Data
         private async Task CreateProductGroup(SqlConnection connection, SqlTransaction transaction)
         {
             string queryStr = "";
-            queryStr = "insert into productgroup(ProductGroupID,ProductGroupCode,ProductGroupName,ShopID,ProductGroupActivate) select((select case when max(ProductGroupID) is null then 0 else max(ProductGroupID) end from productgroup) +ROW_NUMBER() OVER(ORDER BY bb.ProductGroupId)) AS ProductGroupID, aa.ProductGroupName, aa.ProductGroupName, 2 As ShopID,1 As ProductDeptActivate  from(select ProductGroupCode,ProductGroupName from SAPBOne_MasterData group by ProductGroupCode,ProductGroupName) aa left join productgroup bb on aa.ProductGroupCode = bb.ProductGroupCode where bb.ProductGroupCode is null";
+            queryStr = "insert into productgroup(ProductGroupID,ProductGroupCode,ProductGroupName,ShopID,ProductGroupActivate) select((select case when max(ProductGroupID) is null then 0 else max(ProductGroupID) end from productgroup) +ROW_NUMBER() OVER(ORDER BY bb.ProductGroupId)) AS ProductGroupID, aa.ProductGroupCode, aa.ProductGroupName, 2 As ShopID,1 As ProductDeptActivate  from(select ProductGroupCode,ProductGroupName from SAPBOne_MasterData group by ProductGroupCode,ProductGroupName) aa left join productgroup bb on aa.ProductGroupCode = bb.ProductGroupCode where bb.ProductGroupCode is null";
             await Task.Run(() => _dbHelper.ExecuteNonQuery(queryStr, connection, transaction));
 
             queryStr = "UPDATE bb SET bb.ProductGroupName = aa.ProductGroupName FROM ProductGroup AS bb INNER JOIN SAPBOne_MasterData AS aa ON bb.ProductGroupCode = aa.ProductGroupCode";

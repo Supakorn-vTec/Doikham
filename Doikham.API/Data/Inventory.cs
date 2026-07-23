@@ -1382,13 +1382,13 @@ namespace Doikham.API.Data
                              {
                                  POSGIITEMNO = dr["DocDetailID"].ToString(),
                                  RESITEMNO = dr["RESITEMNO"].ToString(),
-                                 MATNR = dr["ProductCode"].ToString(),
+                                 MATNR = dr["MaterialCode"].ToString(),
                                  SWERKS = dr["ShopCode"].ToString(),
                                  RWERKS = dr["ToShopCode"].ToString(),
                                  //MENGE = dr["Qty"].ToString(),
                                  MENGE = Convert.ToDecimal(dr["Qty"]).ToString("0.000"),
                                  MEINS = dr["UnitName"].ToString(),
-                                 SGTXT = "",
+                                 SGTXT = dr["ProductCode"].ToString(),
                              }).ToList();
                 }
                 header.ITEMS = items;
