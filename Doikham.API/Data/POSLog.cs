@@ -26,6 +26,7 @@ namespace Doikham.API.Data
         public  Task<DataTable> GetInterfaceLog(int shopId, int docType, string fromDate, string toDate);
         public Task<DataTable> GetInterfaceShop();
         public Task<int> DeleteLog(string uuid);
+        public Task SetApiLog(string apiName, string apiMethod, string queryParams, string bodyParam, string responseData, short apiStatus, DateTime insertDate, DateTime? finishDate, string errorMessage, int shopId = 0, int computerId = 0, string terminalId = null, int staffId = 0);
 
     }
     public class POSLog : IPOSLog
@@ -134,6 +135,18 @@ namespace Doikham.API.Data
         {
             string queryStr = $"update Document set DocumentNoRef='{refKey}',ReceiveDate=GETDATE() where documentkey='{tranKey}'";
             return await Task.Run(() => _dbHelper.ExecuteNonQuery(queryStr, connString));
+        }
+
+        public async Task SetApiLog(string apiName, string apiMethod, string queryParams, string bodyParam, string responseData, short apiStatus, DateTime insertDate, DateTime? finishDate, string errorMessage, int shopId = 0, int computerId = 0, string terminalId = null, int staffId = 0)
+        {
+            string SqlStr(string value) => value == null ? "NULL" : $"'{value.Replace("'", "''")}'";
+            string SqlDate(DateTime value) => $"'{value.ToString("yyyy-MM-dd HH:mm:ss.ffffff", invC)}'";
+
+            var uuid = Guid.NewGuid().ToString();
+            string finish = finishDate.HasValue ? SqlDate(finishDate.Value) : "NULL";
+            string queryStr = $"insert into log_api(batchuuid,apiname,apimethod,params,bodyparam,responsedata,apistatus,insertdate,finishdate,errormessage,shopid,computerid,terminalid,staffid)" +
+                $"values('{uuid}',{SqlStr(apiName)},{SqlStr(apiMethod)},{SqlStr(queryParams)},{SqlStr(bodyParam)},{SqlStr(responseData)},{apiStatus},{SqlDate(insertDate)},{finish},{SqlStr(errorMessage)},{shopId},{computerId},{SqlStr(terminalId)},{staffId});";
+            await Task.Run(() => _dbHelper.ExecuteNonQuery(queryStr, connString));
         }
         #endregion
     }

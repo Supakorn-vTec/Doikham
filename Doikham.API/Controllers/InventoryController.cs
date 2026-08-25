@@ -38,6 +38,21 @@ namespace Doikham.API.Controllers
             startSaleDate =  _config.GetSection("SAP")["StartSaleDate"];
         }
 
+        private async Task WriteApiLog(string apiName, object body, RESPONSEDATA resData, DateTime insertDate, short apiStatus, string errorMessage = null)
+        {
+            try
+            {
+                string bodyParam = body != null ? JsonConvert.SerializeObject(body) : null;
+                string responseJson = resData != null ? JsonConvert.SerializeObject(resData) : null;
+                string queryParams = Request?.QueryString.HasValue == true ? Request.QueryString.Value : null;
+                await repoLog.SetApiLog(apiName, Request?.Method ?? "POST", queryParams, bodyParam, responseJson, apiStatus, insertDate, DateTime.Now, errorMessage);
+            }
+            catch
+            {
+                // logging must not break API response
+            }
+        }
+
         //Purchase Order
         [HttpPost("[action]")]
         public async Task<ActionResult> PurchaseOrder([FromBody]PURCHASEDOCUMENT data)
@@ -45,6 +60,7 @@ namespace Doikham.API.Controllers
 
             RESPONSEDATA resData = new RESPONSEDATA();
             RESPONSE response = new RESPONSE();
+            DateTime insertDate = DateTime.Now;
             try
             {
                 await Task.Run(() => repo.PurchaseOrderAsync(data));
@@ -52,6 +68,7 @@ namespace Doikham.API.Controllers
                 response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
                 response.MESSAGE = "Success";
                 resData.RESPONSE = response;
+                await WriteApiLog("PurchaseOrder", data, resData, insertDate, 1);
                 return Ok(resData);
             }
             catch (Exception e)
@@ -60,6 +77,7 @@ namespace Doikham.API.Controllers
                 response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
                 response.MESSAGE = e.Message;
                 resData.RESPONSE = response;
+                await WriteApiLog("PurchaseOrder", data, resData, insertDate, 0, e.Message);
                 return StatusCode((int)HttpStatusCode.InternalServerError, resData);
             }
         }
@@ -70,6 +88,7 @@ namespace Doikham.API.Controllers
             RESPONSEDATA resData = new RESPONSEDATA();
             RESPONSE response = new RESPONSE();
             int docType = 2;
+            DateTime insertDate = DateTime.Now;
             try
             {
                 GOODRECEIPTDOCUMENT data = new GOODRECEIPTDOCUMENT();
@@ -115,6 +134,7 @@ namespace Doikham.API.Controllers
                 response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
                 response.MESSAGE = "Success";
                 resData.RESPONSE = response;
+                await WriteApiLog("PurchaseOrderRecipts", null, resData, insertDate, 1);
                 return Ok(resData);
 
             }
@@ -124,6 +144,7 @@ namespace Doikham.API.Controllers
                 response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
                 response.MESSAGE = e.Message;
                 resData.RESPONSE = response;
+                await WriteApiLog("PurchaseOrderRecipts", null, resData, insertDate, 0, e.Message);
                 return StatusCode((int)HttpStatusCode.InternalServerError, resData);
             }
         }
@@ -134,6 +155,7 @@ namespace Doikham.API.Controllers
             RESPONSEDATA resData = new RESPONSEDATA();
             RESPONSE response = new RESPONSE();
             int docType = 39;
+            DateTime insertDate = DateTime.Now;
             try
             {
                 GOODRECEIPTDOCUMENT data = new GOODRECEIPTDOCUMENT();
@@ -178,6 +200,7 @@ namespace Doikham.API.Controllers
                 response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
                 response.MESSAGE = "Success";
                 resData.RESPONSE = response;
+                await WriteApiLog("DirectRecipts", null, resData, insertDate, 1);
                 return Ok(resData);
 
             }
@@ -187,6 +210,7 @@ namespace Doikham.API.Controllers
                 response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
                 response.MESSAGE = e.Message;
                 resData.RESPONSE = response;
+                await WriteApiLog("DirectRecipts", null, resData, insertDate, 0, e.Message);
                 return StatusCode((int)HttpStatusCode.InternalServerError, resData);
             }
         }
@@ -201,6 +225,7 @@ namespace Doikham.API.Controllers
             RESPONSE response = new RESPONSE();
             int docType = 20;
             string docTypeCode = "GIS";
+            DateTime insertDate = DateTime.Now;
             try
             {
                 GOODISSUEINDOCUMENT data = new GOODISSUEINDOCUMENT();
@@ -263,6 +288,7 @@ namespace Doikham.API.Controllers
                 response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
                 response.MESSAGE = "Success";
                 resData.RESPONSE = response;
+                await WriteApiLog("SalesOrder", null, resData, insertDate, 1);
                 return Ok(resData);
 
             }
@@ -272,6 +298,7 @@ namespace Doikham.API.Controllers
                 response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
                 response.MESSAGE = e.Message;
                 resData.RESPONSE = response;
+                await WriteApiLog("SalesOrder", null, resData, insertDate, 0, e.Message);
                 return StatusCode((int)HttpStatusCode.InternalServerError, resData);
             }
         }
@@ -284,6 +311,7 @@ namespace Doikham.API.Controllers
             RESPONSEDATA resData = new RESPONSEDATA();
             RESPONSE response = new RESPONSE();
             int docType = 17;
+            DateTime insertDate = DateTime.Now;
             try
             {
                 REQUESTDOCUMENT data = new REQUESTDOCUMENT();
@@ -332,6 +360,7 @@ namespace Doikham.API.Controllers
                 response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
                 response.MESSAGE = "Success";
                 resData.RESPONSE = response;
+                await WriteApiLog("RequestOrder", null, resData, insertDate, 1);
                 return Ok(resData);
 
             }
@@ -341,6 +370,7 @@ namespace Doikham.API.Controllers
                 response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
                 response.MESSAGE = e.Message;
                 resData.RESPONSE = response;
+                await WriteApiLog("RequestOrder", null, resData, insertDate, 0, e.Message);
                 return StatusCode((int)HttpStatusCode.InternalServerError, resData);
             }
         }
@@ -351,6 +381,7 @@ namespace Doikham.API.Controllers
 
             RESPONSEDATA resData = new RESPONSEDATA();
             RESPONSE response = new RESPONSE();
+            DateTime insertDate = DateTime.Now;
             try
             {
                 await Task.Run(() => repo.TransferOrderAsync(data));
@@ -358,6 +389,7 @@ namespace Doikham.API.Controllers
                 response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
                 response.MESSAGE = "Success";
                 resData.RESPONSE = response;
+                await WriteApiLog("TransferOrder", data, resData, insertDate, 1);
                 return Ok(resData);
             }
             catch (Exception e)
@@ -366,6 +398,7 @@ namespace Doikham.API.Controllers
                 response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
                 response.MESSAGE = e.Message;
                 resData.RESPONSE = response;
+                await WriteApiLog("TransferOrder", data, resData, insertDate, 0, e.Message);
                 return StatusCode((int)HttpStatusCode.InternalServerError, resData);
             }
         }
@@ -377,6 +410,7 @@ namespace Doikham.API.Controllers
             RESPONSEDATA resData = new RESPONSEDATA();
             RESPONSE response = new RESPONSE();
             int docType = 25;
+            DateTime insertDate = DateTime.Now;
             try
             {
                 GOODRECEIPTDOCUMENT data = new GOODRECEIPTDOCUMENT();
@@ -421,6 +455,7 @@ namespace Doikham.API.Controllers
                 response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
                 response.MESSAGE = "Success";
                 resData.RESPONSE = response;
+                await WriteApiLog("TransOrderRecipts", null, resData, insertDate, 1);
                 return Ok(resData);
 
             }
@@ -430,6 +465,7 @@ namespace Doikham.API.Controllers
                 response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
                 response.MESSAGE = e.Message;
                 resData.RESPONSE = response;
+                await WriteApiLog("TransOrderRecipts", null, resData, insertDate, 0, e.Message);
                 return StatusCode((int)HttpStatusCode.InternalServerError, resData);
             }
         }
@@ -442,6 +478,7 @@ namespace Doikham.API.Controllers
             RESPONSE response = new RESPONSE();
             int docType = 0;
             string docTypeCode = "";
+            DateTime insertDate = DateTime.Now;
             try
             {
                 STOCKADJUST data = new STOCKADJUST();
@@ -490,6 +527,7 @@ namespace Doikham.API.Controllers
                 response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
                 response.MESSAGE = "Success";
                 resData.RESPONSE = response;
+                await WriteApiLog("AdjustOrder", null, resData, insertDate, 1);
                 return Ok(resData);
 
             }
@@ -499,6 +537,7 @@ namespace Doikham.API.Controllers
                 response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
                 response.MESSAGE = e.Message;
                 resData.RESPONSE = response;
+                await WriteApiLog("AdjustOrder", null, resData, insertDate, 0, e.Message);
                 return StatusCode((int)HttpStatusCode.InternalServerError, resData);
             }
         }
@@ -511,6 +550,7 @@ namespace Doikham.API.Controllers
             RESPONSE response = new RESPONSE();
             int docType = 1002;
             string docTypeCode = "";
+            DateTime insertDate = DateTime.Now;
             try
             {
                 PREFINISHDOCUMENT data = new PREFINISHDOCUMENT();
@@ -559,6 +599,7 @@ namespace Doikham.API.Controllers
                 response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
                 response.MESSAGE = "Success";
                 resData.RESPONSE = response;
+                await WriteApiLog("PrefinishOrder_BatchOUT", null, resData, insertDate, 1);
                 return Ok(resData);
 
             }
@@ -568,6 +609,7 @@ namespace Doikham.API.Controllers
                 response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
                 response.MESSAGE = e.Message;
                 resData.RESPONSE = response;
+                await WriteApiLog("PrefinishOrder_BatchOUT", null, resData, insertDate, 0, e.Message);
                 return StatusCode((int)HttpStatusCode.InternalServerError, resData);
             }
         }
@@ -580,6 +622,7 @@ namespace Doikham.API.Controllers
             RESPONSE response = new RESPONSE();
             int docType = 1001;
             string docTypeCode = "";
+            DateTime insertDate = DateTime.Now;
             try
             {
                 PREFINISHDOCUMENT_GR data = new PREFINISHDOCUMENT_GR();
@@ -628,6 +671,7 @@ namespace Doikham.API.Controllers
                 response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
                 response.MESSAGE = "Success";
                 resData.RESPONSE = response;
+                await WriteApiLog("PrefinishOrder_BatchIN", null, resData, insertDate, 1);
                 return Ok(resData);
 
             }
@@ -637,6 +681,7 @@ namespace Doikham.API.Controllers
                 response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
                 response.MESSAGE = e.Message;
                 resData.RESPONSE = response;
+                await WriteApiLog("PrefinishOrder_BatchIN", null, resData, insertDate, 0, e.Message);
                 return StatusCode((int)HttpStatusCode.InternalServerError, resData);
             }
         }
@@ -649,6 +694,7 @@ namespace Doikham.API.Controllers
             RESPONSE response = new RESPONSE();
             int docType = 0;
             string docTypeCode = "RDC";
+            DateTime insertDate = DateTime.Now;
             try
             {
                 RETURNTTODC data = new RETURNTTODC();
@@ -697,6 +743,7 @@ namespace Doikham.API.Controllers
                 response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
                 response.MESSAGE = "Success";
                 resData.RESPONSE = response;
+                await WriteApiLog("RETURNT_TO_DC", null, resData, insertDate, 1);
                 return Ok(resData);
 
             }
@@ -706,6 +753,7 @@ namespace Doikham.API.Controllers
                 response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
                 response.MESSAGE = e.Message;
                 resData.RESPONSE = response;
+                await WriteApiLog("RETURNT_TO_DC", null, resData, insertDate, 0, e.Message);
                 return StatusCode((int)HttpStatusCode.InternalServerError, resData);
             }
         }
@@ -718,6 +766,7 @@ namespace Doikham.API.Controllers
             RESPONSE response = new RESPONSE();
             int docType = 0;
             string docTypeCode = "TRF";
+            DateTime insertDate = DateTime.Now;
             try
             {
                 RETURNTTOSLOC data = new RETURNTTOSLOC();
@@ -766,6 +815,7 @@ namespace Doikham.API.Controllers
                 response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
                 response.MESSAGE = "Success";
                 resData.RESPONSE = response;
+                await WriteApiLog("RETURNT_TO_SLOC", null, resData, insertDate, 1);
                 return Ok(resData);
 
             }
@@ -775,6 +825,7 @@ namespace Doikham.API.Controllers
                 response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
                 response.MESSAGE = e.Message;
                 resData.RESPONSE = response;
+                await WriteApiLog("RETURNT_TO_SLOC", null, resData, insertDate, 0, e.Message);
                 return StatusCode((int)HttpStatusCode.InternalServerError, resData);
             }
         }
@@ -790,6 +841,7 @@ namespace Doikham.API.Controllers
             string action = "";
             string documentKey = "";
             string uuid = "";
+            DateTime insertDate = DateTime.Now;
             try
             {
                 switch (data.ACTION)
@@ -843,6 +895,7 @@ namespace Doikham.API.Controllers
                 response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
                 response.MESSAGE = "Success";
                 resData.RESPONSE = response;
+                await WriteApiLog("ResendData", data, resData, insertDate, 1);
                 return Ok(resData);
             }
             catch (Exception e)
@@ -851,6 +904,7 @@ namespace Doikham.API.Controllers
                 response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
                 response.MESSAGE = e.Message;
                 resData.RESPONSE = response;
+                await WriteApiLog("ResendData", data, resData, insertDate, 0, e.Message);
                 return StatusCode((int)HttpStatusCode.InternalServerError, resData);
             }
         }
