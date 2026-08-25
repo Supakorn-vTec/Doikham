@@ -102,7 +102,11 @@ namespace Doikham.API.Controllers
                             {
                                 resStatusCode = dt.Rows[0]["TYPE"].ToString();
                             }
-                            await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
+                            if (resStatusCode == "S")
+                            {
+                                await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
+                            }
+                                
                         }
 
                     }
@@ -162,7 +166,11 @@ namespace Doikham.API.Controllers
                             {
                                 resStatusCode = dt.Rows[0]["TYPE"].ToString();
                             }
-                            await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
+                            if (resStatusCode == "S")
+                            {
+                                await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
+                            }
+
                         }
                     }
                 }
@@ -232,7 +240,11 @@ namespace Doikham.API.Controllers
                                 {
                                     resStatusCode = dt.Rows[0]["TYPE"].ToString();
                                 }
-                                await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
+                                if (resStatusCode == "S")
+                                {
+                                    await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
+                                }
+
                             }
                             catch (Exception ex) {
 
@@ -307,8 +319,12 @@ namespace Doikham.API.Controllers
                             //    resStatusCode = dt.Rows[0]["TYPE"].ToString();
                             //    docRefKey = dt.Rows[0]["DOC_NO"].ToString();
                             //}
-                            await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
-                            await Task.Run(() => repoLog.SetDocumentRefFromSAP(documentKey, obj.DOC_NO));
+                            if (resStatusCode == "S")
+                            {
+                                await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
+                                await Task.Run(() => repoLog.SetDocumentRefFromSAP(documentKey, obj.DOC_NO));
+                            }
+
                         }
                     }
                 }
@@ -393,7 +409,11 @@ namespace Doikham.API.Controllers
                             {
                                 resStatusCode = dt.Rows[0]["TYPE"].ToString();
                             }
-                            await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
+                            if(resStatusCode == "S")
+                            {
+                                await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
+                            }
+
                         }
                     }
                 }
@@ -458,7 +478,11 @@ namespace Doikham.API.Controllers
                             {
                                 resStatusCode = dt.Rows[0]["TYPE"].ToString();
                             }
-                            await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
+                            if (resStatusCode == "S")
+                            {
+                                await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
+                            }
+                            
                         }
                     }
                 }
@@ -523,7 +547,11 @@ namespace Doikham.API.Controllers
                             {
                                 resStatusCode = dt.Rows[0]["TYPE"].ToString();
                             }
-                            await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
+                            if (resStatusCode == "S")
+                            {
+                                await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
+                            }
+                              
                         }
                     }
                 }
@@ -588,7 +616,11 @@ namespace Doikham.API.Controllers
                             {
                                 resStatusCode = dt.Rows[0]["TYPE"].ToString();
                             }
-                            await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
+                            if (resStatusCode == "S")
+                            {
+                                await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
+                            }
+                              
                         }
                     }
                 }
@@ -653,7 +685,11 @@ namespace Doikham.API.Controllers
                             {
                                 resStatusCode = dt.Rows[0]["TYPE"].ToString();
                             }
-                            await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
+                            if (resStatusCode == "S")
+                            {
+                                await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
+                            }
+                              
                         }
                     }
                 }
@@ -718,7 +754,11 @@ namespace Doikham.API.Controllers
                             {
                                 resStatusCode = dt.Rows[0]["TYPE"].ToString();
                             }
-                            await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
+                            if (resStatusCode == "S")
+                            {
+                                await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
+                            }
+                              
                         }
                     }
                 }
@@ -792,7 +832,11 @@ namespace Doikham.API.Controllers
                         {
                             resStatusCode = dt.Rows[0]["TYPE"].ToString();
                         }
-                        await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
+                        if (resStatusCode == "S")
+                        {
+                            await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
+                        }
+                           
                     }
                 }
                 response.TYPE = "S";
