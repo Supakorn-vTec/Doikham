@@ -27,6 +27,7 @@ namespace Doikham.API.Data
         public Task<RETURNTTODC> TransferToDCAsync(string documentKey, string docTypeCode);
         public Task<RETURNTTOSLOC> TransferToSLOCAsync(string documentKey, string docTypeCode);
         public Task<GOODISSUEINDOCUMENT> SalesOrderAsync(string documentKey, string docTypeCode, string shopCoe);
+        public Task<DataTable> GetGisDocumentsForDailySale(int shopId, string saleDate);
 
 
     }
@@ -80,24 +81,23 @@ namespace Doikham.API.Data
                 PropertyTextValue = "#,##0.00";
             }
 
-            GOODISSUEIN_HEADER header = new GOODISSUEIN_HEADER();
             if (dtH.Rows.Count > 0)
             {
                 int docTypeId = Convert.ToInt32(dtH.Rows[0]["DocumentTypeId"]);
-                header.POSTYPE = docTypeCode;
-                header.POSDOCITEM = dtH.Rows[0]["documentno"].ToString();
-                header.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                data.POSTYPE = docTypeCode;
+                data.POSDOCITEM = dtH.Rows[0]["documentno"].ToString();
+                data.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
                 if (docTypeId == 3)
                 {
-                    header.RESNO = dtH.Rows[0]["documentnoref"].ToString();
+                    data.RESNO = dtH.Rows[0]["documentnoref"].ToString();
                 }
                 else
                 {
-                    header.RESNO = "";
+                    data.RESNO = "";
                 }
-                header.BUDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
-                header.XBLNR = "";
-                header.USNAM = dtH.Rows[0]["staffcode"].ToString();
+                data.BUDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                data.XBLNR = "";
+                data.USNAM = dtH.Rows[0]["staffcode"].ToString();
                 List<GOODISSUEIN_ITEMS> items = new List<GOODISSUEIN_ITEMS>();
                 if (dtL.Rows.Count > 0)
                 {
@@ -115,12 +115,8 @@ namespace Doikham.API.Data
                                  SGTXT = "",
                              }).ToList();
                 }
-                header.ITEMS = items;
+                data.toITEMS = items;
             }
-            GOODISSUEIN_ORDER adjust = new GOODISSUEIN_ORDER();
-            adjust.HEADER = header;
-
-            data.GOODS_ISSUE_IN = adjust;
             return data;
         }
 
@@ -154,24 +150,23 @@ namespace Doikham.API.Data
                 PropertyTextValue = "#,##0.00";
             }
             PropertyTextValue = PropertyTextValue.Replace(",", "");
-            GOODISSUEIN_HEADER header = new GOODISSUEIN_HEADER();
             if (dtH.Rows.Count > 0)
             {
                 int docTypeId = Convert.ToInt32(dtH.Rows[0]["DocumentTypeId"]);
-                header.POSTYPE = docTypeCode;
-                header.POSDOCITEM = dtH.Rows[0]["documentno"].ToString();
-                header.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                data.POSTYPE = docTypeCode;
+                data.POSDOCITEM = dtH.Rows[0]["documentno"].ToString();
+                data.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
                 if (docTypeId == 3)
                 {
-                    header.RESNO = dtH.Rows[0]["documentnoref"].ToString();
+                    data.RESNO = dtH.Rows[0]["documentnoref"].ToString();
                 }
                 else
                 {
-                    header.RESNO = "";
+                    data.RESNO = "";
                 }
-                header.BUDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
-                header.XBLNR = "";
-                header.USNAM = dtH.Rows[0]["staffcode"].ToString();
+                data.BUDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                data.XBLNR = "";
+                data.USNAM = dtH.Rows[0]["staffcode"].ToString();
                 List<GOODISSUEIN_ITEMS> items = new List<GOODISSUEIN_ITEMS>();
                 if (dtL.Rows.Count > 0)
                 {
@@ -189,12 +184,8 @@ namespace Doikham.API.Data
                                  SGTXT = "",
                              }).ToList();
                 }
-                header.ITEMS = items;
+                data.toITEMS = items;
             }
-            GOODISSUEIN_ORDER adjust = new GOODISSUEIN_ORDER();
-            adjust.HEADER = header;
-
-            data.STOCK_ADJUST = adjust;
             return data;
         }
 
@@ -229,24 +220,23 @@ namespace Doikham.API.Data
                 PropertyTextValue = "#,##0.00";
             }
             PropertyTextValue = PropertyTextValue.Replace(",", "");
-            GOODISSUEIN_HEADER header = new GOODISSUEIN_HEADER();
             if (dtH.Rows.Count > 0)
             {
                 int docTypeId = Convert.ToInt32(dtH.Rows[0]["DocumentTypeId"]);
-                header.POSTYPE = docTypeCode;
-                header.POSDOCITEM = dtH.Rows[0]["documentno"].ToString();
-                header.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                data.POSTYPE = docTypeCode;
+                data.POSDOCITEM = dtH.Rows[0]["documentno"].ToString();
+                data.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
                 if (docTypeId == 3)
                 {
-                    header.RESNO = dtH.Rows[0]["documentnoref"].ToString();
+                    data.RESNO = dtH.Rows[0]["documentnoref"].ToString();
                 }
                 else
                 {
-                    header.RESNO = "";
+                    data.RESNO = "";
                 }
-                header.BUDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
-                header.XBLNR = "";
-                header.USNAM = dtH.Rows[0]["staffcode"].ToString();
+                data.BUDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                data.XBLNR = "";
+                data.USNAM = dtH.Rows[0]["staffcode"].ToString();
                 List<GOODISSUEIN_ITEMS> items = new List<GOODISSUEIN_ITEMS>();
                 if (dtL.Rows.Count > 0)
                 {
@@ -266,12 +256,8 @@ namespace Doikham.API.Data
 
                              }).ToList();
                 }
-                header.ITEMS = items;
+                data.toITEMS = items;
             }
-            GOODISSUEIN_ORDER adjust = new GOODISSUEIN_ORDER();
-            adjust.HEADER = header;
-
-            data.GI_PREFINISH = adjust;
             return data;
         }
         public async Task<PREFINISHDOCUMENT_GR> GRPrefinishAsync(string documentKey, string docTypeCode)
@@ -305,24 +291,23 @@ namespace Doikham.API.Data
                 PropertyTextValue = "#,##0.00";
             }
             PropertyTextValue = PropertyTextValue.Replace(",", "");
-            GOODISSUEIN_HEADER header = new GOODISSUEIN_HEADER();
             if (dtH.Rows.Count > 0)
             {
                 int docTypeId = Convert.ToInt32(dtH.Rows[0]["DocumentTypeId"]);
-                header.POSTYPE = docTypeCode;
-                header.POSDOCITEM = dtH.Rows[0]["documentno"].ToString();
-                header.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                data.POSTYPE = docTypeCode;
+                data.POSDOCITEM = dtH.Rows[0]["documentno"].ToString();
+                data.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
                 if (docTypeId == 3)
                 {
-                    header.RESNO = dtH.Rows[0]["documentnoref"].ToString();
+                    data.RESNO = dtH.Rows[0]["documentnoref"].ToString();
                 }
                 else
                 {
-                    header.RESNO = "";
+                    data.RESNO = "";
                 }
-                header.BUDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
-                header.XBLNR = "";
-                header.USNAM = dtH.Rows[0]["staffcode"].ToString();
+                data.BUDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                data.XBLNR = "";
+                data.USNAM = dtH.Rows[0]["staffcode"].ToString();
                 List<GOODISSUEIN_ITEMS> items = new List<GOODISSUEIN_ITEMS>();
                 if (dtL.Rows.Count > 0)
                 {
@@ -341,12 +326,8 @@ namespace Doikham.API.Data
 
                              }).ToList();
                 }
-                header.ITEMS = items;
+                data.toITEMS = items;
             }
-            GOODISSUEIN_ORDER adjust = new GOODISSUEIN_ORDER();
-            adjust.HEADER = header;
-
-            data.GR_PREFINISH = adjust;
             return data;
         }
         public async Task<RETURNTTODC> TransferToDCAsync(string documentKey, string docTypeCode)
@@ -379,24 +360,23 @@ namespace Doikham.API.Data
                 PropertyTextValue = "#,##0.00";
             }
             PropertyTextValue = PropertyTextValue.Replace(",", "");
-            GOODISSUEIN_HEADER header = new GOODISSUEIN_HEADER();
             if (dtH.Rows.Count > 0)
             {
                 int docTypeId = Convert.ToInt32(dtH.Rows[0]["DocumentTypeId"]);
-                header.POSTYPE = docTypeCode;
-                header.POSDOCITEM = dtH.Rows[0]["documentno"].ToString();
-                header.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                data.POSTYPE = docTypeCode;
+                data.POSDOCITEM = dtH.Rows[0]["documentno"].ToString();
+                data.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
                 if (docTypeId == 3)
                 {
-                    header.RESNO = dtH.Rows[0]["documentnoref"].ToString();
+                    data.RESNO = dtH.Rows[0]["documentnoref"].ToString();
                 }
                 else
                 {
-                    header.RESNO = "";
+                    data.RESNO = "";
                 }
-                header.BUDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
-                header.XBLNR = "";
-                header.USNAM = dtH.Rows[0]["staffcode"].ToString();
+                data.BUDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                data.XBLNR = "";
+                data.USNAM = dtH.Rows[0]["staffcode"].ToString();
                 List<GOODISSUEIN_ITEMS> items = new List<GOODISSUEIN_ITEMS>();
                 if (dtL.Rows.Count > 0)
                 {
@@ -414,12 +394,8 @@ namespace Doikham.API.Data
                                  SGTXT = "",
                              }).ToList();
                 }
-                header.ITEMS = items;
+                data.toITEMS = items;
             }
-            GOODISSUEIN_ORDER adjust = new GOODISSUEIN_ORDER();
-            adjust.HEADER = header;
-
-            data.RETURNT_TO_DC = adjust;
             return data;
         }
         public async Task<RETURNTTOSLOC> TransferToSLOCAsync(string documentKey, string docTypeCode)
@@ -452,24 +428,23 @@ namespace Doikham.API.Data
                 PropertyTextValue = "#,##0.00";
             }
             PropertyTextValue = PropertyTextValue.Replace(",", "");
-            GOODISSUEIN_HEADER header = new GOODISSUEIN_HEADER();
             if (dtH.Rows.Count > 0)
             {
                 int docTypeId = Convert.ToInt32(dtH.Rows[0]["DocumentTypeId"]);
-                header.POSTYPE = docTypeCode;
-                header.POSDOCITEM = dtH.Rows[0]["documentno"].ToString();
-                header.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                data.POSTYPE = docTypeCode;
+                data.POSDOCITEM = dtH.Rows[0]["documentno"].ToString();
+                data.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
                 if (docTypeId == 3)
                 {
-                    header.RESNO = dtH.Rows[0]["documentnoref"].ToString();
+                    data.RESNO = dtH.Rows[0]["documentnoref"].ToString();
                 }
                 else
                 {
-                    header.RESNO = "";
+                    data.RESNO = "";
                 }
-                header.BUDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
-                header.XBLNR = "";
-                header.USNAM = dtH.Rows[0]["staffcode"].ToString();
+                data.BUDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                data.XBLNR = "";
+                data.USNAM = dtH.Rows[0]["staffcode"].ToString();
                 List<GOODISSUEIN_ITEMS> items = new List<GOODISSUEIN_ITEMS>();
                 if (dtL.Rows.Count > 0)
                 {
@@ -487,12 +462,8 @@ namespace Doikham.API.Data
                                  SGTXT = "",
                              }).ToList();
                 }
-                header.ITEMS = items;
+                data.toITEMS = items;
             }
-            GOODISSUEIN_ORDER adjust = new GOODISSUEIN_ORDER();
-            adjust.HEADER = header;
-
-            data.TRANSFER_SLOC = adjust;
             return data;
         }
 
@@ -530,13 +501,12 @@ namespace Doikham.API.Data
             }
 
             PropertyTextValue = PropertyTextValue.Replace(",", "");
-            REQUEST_HEADER header = new REQUEST_HEADER();
             if (dtH.Rows.Count > 0)
             {
-                header.POSTYPE = dtH.Rows[0]["documenttypeheader"].ToString(); 
-                header.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
-                header.BKTXT = dtH.Rows[0]["documentno"].ToString();
-                header.HGTXT = dtH.Rows[0]["remark"].ToString();
+                data.POSTYPE = dtH.Rows[0]["documenttypeheader"].ToString(); 
+                data.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                data.BKTXT = dtH.Rows[0]["documentno"].ToString();
+                data.HGTXT = dtH.Rows[0]["remark"].ToString();
                 List<REQUEST_ITEMS> items = new List<REQUEST_ITEMS>();
                 if (dtL.Rows.Count > 0)
                 {
@@ -554,12 +524,8 @@ namespace Doikham.API.Data
                                  SGTXT = "",
                              }).ToList();
                 }
-                header.ITEMS = items;
+                data.toITEMS = items;
             }
-            REQUEST_ORDER request = new REQUEST_ORDER();
-            request.HEADER = header;
-
-            data.REQUEST_FORM = request;
             return data;
         }
         public async Task<bool> TransferOrderAsync(GOODISSUEOUTDOCUMENT issueData)
@@ -767,15 +733,14 @@ namespace Doikham.API.Data
                 PropertyTextValue = "#,##0.00";
             }
             PropertyTextValue = PropertyTextValue.Replace(",", "");
-            GOODRECEIPT_HEADER header = new GOODRECEIPT_HEADER();
             if (dtH.Rows.Count > 0)
             {
-                header.POSTYPE = "TRO";
-                header.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
-                header.BKTXT = dtH.Rows[0]["documentno"].ToString();
-                header.LFSNR = "";
-                header.BUDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
-                header.USNAM = dtH.Rows[0]["staffcode"].ToString();
+                data.POSTYPE = "TRO";
+                data.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                data.BKTXT = dtH.Rows[0]["documentno"].ToString();
+                data.LFSNR = "";
+                data.BUDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                data.USNAM = dtH.Rows[0]["staffcode"].ToString();
                 List<GOODRECEIPT_ITEMS> items = new List<GOODRECEIPT_ITEMS>();
                 if (dtL.Rows.Count > 0)
                 {
@@ -796,12 +761,8 @@ namespace Doikham.API.Data
                                  SGTXT = "",
                              }).ToList();
                 }
-                header.ITEMS = items;
+                data.toITEMS = items;
             }
-            GOODRECEIPT_ORDER goodsReceipts = new GOODRECEIPT_ORDER();
-            goodsReceipts.HEADER = header;
-
-            data.GOODS_RECEIPT = goodsReceipts;
             return data;
         }
         #endregion
@@ -993,15 +954,14 @@ namespace Doikham.API.Data
                 PropertyTextValue = "#,##0.00";
             }
             PropertyTextValue = PropertyTextValue.Replace(",", "");
-            GOODRECEIPT_HEADER header = new GOODRECEIPT_HEADER();
             if (dtH.Rows.Count > 0)
             {
-                header.POSTYPE = "RO";
-                header.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
-                header.BKTXT = dtH.Rows[0]["documentno"].ToString();
-                header.LFSNR = "";
-                header.BUDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
-                header.USNAM = dtH.Rows[0]["staffcode"].ToString();
+                data.POSTYPE = "RO";
+                data.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                data.BKTXT = dtH.Rows[0]["documentno"].ToString();
+                data.LFSNR = "";
+                data.BUDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                data.USNAM = dtH.Rows[0]["staffcode"].ToString();
                 List<GOODRECEIPT_ITEMS> items = new List<GOODRECEIPT_ITEMS>();
                 if (dtL.Rows.Count > 0)
                 {
@@ -1023,12 +983,8 @@ namespace Doikham.API.Data
                                  SGTXT = "",
                              }).ToList();
                 }
-                header.ITEMS = items;
+                data.toITEMS = items;
             }
-            GOODRECEIPT_ORDER goodsReceipts = new GOODRECEIPT_ORDER();
-            goodsReceipts.HEADER = header;
-
-            data.GOODS_RECEIPT = goodsReceipts;
             return data;
         }
         public async Task<GOODRECEIPTDOCUMENT> DirectReciptAsync(string documentKey)
@@ -1060,15 +1016,14 @@ namespace Doikham.API.Data
                 PropertyTextValue = "#,##0.00";
             }
             PropertyTextValue = PropertyTextValue.Replace(",", "");
-            GOODRECEIPT_HEADER header = new GOODRECEIPT_HEADER();
             if (dtH.Rows.Count > 0)
             {
-                header.POSTYPE = "DRO";
-                header.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
-                header.BKTXT = dtH.Rows[0]["documentno"].ToString();
-                header.LFSNR = "";
-                header.BUDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
-                header.USNAM = dtH.Rows[0]["staffcode"].ToString();
+                data.POSTYPE = "DRO";
+                data.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                data.BKTXT = dtH.Rows[0]["documentno"].ToString();
+                data.LFSNR = "";
+                data.BUDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                data.USNAM = dtH.Rows[0]["staffcode"].ToString();
                 List<GOODRECEIPT_ITEMS> items = new List<GOODRECEIPT_ITEMS>();
                 if (dtL.Rows.Count > 0)
                 {
@@ -1090,12 +1045,8 @@ namespace Doikham.API.Data
                                  SGTXT = "",
                              }).ToList();
                 }
-                header.ITEMS = items;
+                data.toITEMS = items;
             }
-            GOODRECEIPT_ORDER goodsReceipts = new GOODRECEIPT_ORDER();
-            goodsReceipts.HEADER = header;
-
-            data.GOODS_RECEIPT = goodsReceipts;
             return data;
         }
         #endregion
@@ -1255,7 +1206,7 @@ namespace Doikham.API.Data
             //string queryStr = $"select d.ShopCode,e.VendorCode, a.DocumentID,a.KeyShopID,a.DocumentKey,b.DocumentKey As POKey,a.DocumentYear,a.DocumentMonth,a.DocumentNo, b.DocumentNoRef,case when a.DocumentTypeID=25 and (po.SupplierMaterialCode is null or po.SupplierMaterialCode='') then b.DocumentNoRef else po.SupplierMaterialCode end As SupplierMaterialCode,a.DocumentDate,c.DocDetailID,case when a.DocumentTypeID=3 then c.DocDetailID else '' end As RESITEMNO, c.ProductCode,c.ProductName,c.ProductAmount As Qty,c.UnitSmallAmount As SmallQty,c.UnitName, c.UnitName As SmallUnitName,c.ProductPricePerUnit,c.ProductNetPrice,c.ProductTotalPrice,LineNumber,s1.ShopCode As ToShopCode,s2.ShopCode As FromShopCode,a.DueDate from document a left join document b on a.DocumentIDRef = b.DocumentID and a.DocIDRefShopID = b.KeyShopID join docdetail c on a.DocumentID = c.DocumentID and a.KeyShopID = c.KeyShopID  join shop_data d on a.ShopID = d.ShopID left join vendors e on a.VendorID = e.VendorID left join interface_document_fromsap po on a.DocumentIDRef=po.DocumentID and a.DocIDRefShopID=po.KeyShopID and c.ProductID=po.ProductID left join shop_data s1 on a.ToInvID = s1.ShopID left join shop_data s2 on a.FromInvID = s2.ShopID  where a.DocumentStatus = 2  and a.DocumentKey='{documentKey}' and c.ProductID in(select Materialid from MaterialMaster_GIS) order by DocDetailID";
             //string queryStr = $"select distinct d.ShopCode,e.VendorCode, a.DocumentID,a.KeyShopID,a.DocumentKey,b.DocumentKey As POKey,a.DocumentYear,a.DocumentMonth,a.DocumentNo, b.DocumentNoRef,case when a.DocumentTypeID=25 and (po.SupplierMaterialCode is null or po.SupplierMaterialCode='') then b.DocumentNoRef else po.SupplierMaterialCode end As SupplierMaterialCode,a.DocumentDate,c.DocDetailID,case when a.DocumentTypeID=3 then c.DocDetailID else '' end As RESITEMNO, c.ProductCode,c.ProductName,c.ProductAmount As Qty,c.UnitSmallAmount As SmallQty,c.UnitName, c.UnitName As SmallUnitName,c.ProductPricePerUnit,c.ProductNetPrice,c.ProductTotalPrice,LineNumber,s1.ShopCode As ToShopCode,s2.ShopCode As FromShopCode,a.DueDate from document a left join document b on a.DocumentIDRef = b.DocumentID and a.DocIDRefShopID = b.KeyShopID join docdetail c on a.DocumentID = c.DocumentID and a.KeyShopID = c.KeyShopID right join (select mg.* from orderdetail od right join MaterialMaster_GIS mg on od.productid=mg.productid where saledate='{docDate}' and shopid={shopId}) sale on c.productid=sale.MaterialID join shop_data d on a.ShopID = d.ShopID left join vendors e on a.VendorID = e.VendorID left join interface_document_fromsap po on a.DocumentIDRef=po.DocumentID and a.DocIDRefShopID=po.KeyShopID and c.ProductID=po.ProductID left join shop_data s1 on a.ToInvID = s1.ShopID left join shop_data s2 on a.FromInvID = s2.ShopID  where a.DocumentStatus = 2  and a.DocumentKey='{documentKey}' order by DocDetailID";
             //string queryStr = $"select ShopCode,VendorCode, DocumentID,KeyShopID,DocumentKey,POKey,DocumentYear,DocumentMonth,DocumentNo, DocumentNoRef,SupplierMaterialCode,DocumentDate,DocDetailID, RESITEMNO, ProductCode,ProductName,sum(Qty) as Qty ,sum(SmallQty) as SmallQty,UnitName, SmallUnitName,ProductPricePerUnit,ProductNetPrice,ProductTotalPrice,LineNumber,ToShopCode, FromShopCode,DueDate \r\nfrom (\r\n select distinct d.ShopCode,e.VendorCode, a.DocumentID,a.KeyShopID,a.DocumentKey,b.DocumentKey As POKey,a.DocumentYear,a.DocumentMonth,a.DocumentNo, b.DocumentNoRef,case when a.DocumentTypeID=25 and (po.SupplierMaterialCode is null or po.SupplierMaterialCode='') then b.DocumentNoRef else po.SupplierMaterialCode end As SupplierMaterialCode,a.DocumentDate,c.DocDetailID,case when a.DocumentTypeID=3 then c.DocDetailID else '' end As RESITEMNO, c.ProductCode,c.ProductName,(sale.totalqty*sale.materialamount) As Qty,(sale.totalqty*sale.materialamount) As SmallQty,c.UnitName, c.UnitName As SmallUnitName,c.ProductPricePerUnit,c.ProductNetPrice,c.ProductTotalPrice,LineNumber,s1.ShopCode As ToShopCode,s2.ShopCode As FromShopCode,a.DueDate,sale.TranKey\r\n from document a left join document b on a.DocumentIDRef = b.DocumentID and a.DocIDRefShopID = b.KeyShopID join docdetail c on a.DocumentID = c.DocumentID and a.KeyShopID = c.KeyShopID inner join (select mg.*,od.TotalQty as totalQty,trankey from orderdetail od inner join MaterialMaster_GIS mg on od.productid=mg.productid where saledate='{docDate}' and shopid={shopId} and OrderStatusID=2) sale on c.productid=sale.MaterialID join shop_data d on a.ShopID = d.ShopID left join vendors e on a.VendorID = e.VendorID left join interface_document_fromsap po on a.DocumentIDRef=po.DocumentID and a.DocIDRefShopID=po.KeyShopID and c.ProductID=po.ProductID left join shop_data s1 on a.ToInvID = s1.ShopID left join shop_data s2 on a.FromInvID = s2.ShopID  where a.DocumentStatus = 2  and a.DocumentKey='{documentKey}' \r\n ) Int_GIS\r\n group by ShopCode,VendorCode, DocumentID,KeyShopID,DocumentKey,POKey,DocumentYear,DocumentMonth,DocumentNo, DocumentNoRef,SupplierMaterialCode,DocumentDate,DocDetailID, RESITEMNO, ProductCode,ProductName,UnitName, SmallUnitName,ProductPricePerUnit,ProductNetPrice,ProductTotalPrice,LineNumber,ToShopCode, FromShopCode,DueDate\r\n order by DocDetailID";
-            string queryStr = $"select ShopCode,VendorCode, DocumentID,KeyShopID,DocumentKey,POKey,DocumentYear,DocumentMonth,DocumentNo, DocumentNoRef,SupplierMaterialCode,DocumentDate,DocDetailID, RESITEMNO, ProductCode,ProductName,sum(Qty) as Qty ,sum(SmallQty) as SmallQty,UnitName, SmallUnitName,ProductPricePerUnit,ProductNetPrice,ProductTotalPrice,LineNumber,ToShopCode, FromShopCode,DueDate \r\nfrom (\r\n select distinct d.ShopCode,e.VendorCode, a.DocumentID,a.KeyShopID,a.DocumentKey,b.DocumentKey As POKey,a.DocumentYear,a.DocumentMonth,a.DocumentNo, b.DocumentNoRef,case when a.DocumentTypeID=25 and (po.SupplierMaterialCode is null or po.SupplierMaterialCode='') then b.DocumentNoRef else po.SupplierMaterialCode end As SupplierMaterialCode,a.DocumentDate,c.DocDetailID,case when a.DocumentTypeID=3 then c.DocDetailID else '' end As RESITEMNO, c.ProductCode,c.ProductName,(sale.totalqty*sale.materialamount) As Qty,(sale.totalqty*sale.materialamount) As SmallQty,c.UnitName, c.UnitName As SmallUnitName,c.ProductPricePerUnit,c.ProductNetPrice,c.ProductTotalPrice,LineNumber,s1.ShopCode As ToShopCode,s2.ShopCode As FromShopCode,a.DueDate,sale.TranKey\r\n from document a left join document b on a.DocumentIDRef = b.DocumentID and a.DocIDRefShopID = b.KeyShopID join docdetail c on a.DocumentID = c.DocumentID and a.KeyShopID = c.KeyShopID inner join (select mg.*,od.TotalQty as totalQty,od.trankey from orderdetail od inner join MaterialMaster_GIS mg on od.productid=mg.productid inner join ordertransaction tr on od.TranKey=tr.TranKey where od.saledate='{docDate}' and od.shopid={shopId} and OrderStatusID=2 and tr.TransactionStatusID=2) sale on c.productid=sale.MaterialID join shop_data d on a.ShopID = d.ShopID left join vendors e on a.VendorID = e.VendorID left join interface_document_fromsap po on a.DocumentIDRef=po.DocumentID and a.DocIDRefShopID=po.KeyShopID and c.ProductID=po.ProductID left join shop_data s1 on a.ToInvID = s1.ShopID left join shop_data s2 on a.FromInvID = s2.ShopID  where a.DocumentStatus = 2  and a.DocumentKey='{documentKey}' \r\n ) Int_GIS\r\n group by ShopCode,VendorCode, DocumentID,KeyShopID,DocumentKey,POKey,DocumentYear,DocumentMonth,DocumentNo, DocumentNoRef,SupplierMaterialCode,DocumentDate,DocDetailID, RESITEMNO, ProductCode,ProductName,UnitName, SmallUnitName,ProductPricePerUnit,ProductNetPrice,ProductTotalPrice,LineNumber,ToShopCode, FromShopCode,DueDate\r\n order by DocDetailID";
+            string queryStr = $"select ShopCode,VendorCode, DocumentID,KeyShopID,DocumentKey,POKey,DocumentYear,DocumentMonth,DocumentNo, DocumentNoRef,SupplierMaterialCode,DocumentDate,DocDetailID, RESITEMNO, ProductCode,MaterialCode,FGProductCode,ProductName,sum(Qty) as Qty ,sum(SmallQty) as SmallQty,UnitName, SmallUnitName,ProductPricePerUnit,ProductNetPrice,ProductTotalPrice,LineNumber,ToShopCode, FromShopCode,DueDate \r\nfrom (\r\n select distinct d.ShopCode,e.VendorCode, a.DocumentID,a.KeyShopID,a.DocumentKey,b.DocumentKey As POKey,a.DocumentYear,a.DocumentMonth,a.DocumentNo, b.DocumentNoRef,case when a.DocumentTypeID=25 and (po.SupplierMaterialCode is null or po.SupplierMaterialCode='') then b.DocumentNoRef else po.SupplierMaterialCode end As SupplierMaterialCode,a.DocumentDate,c.DocDetailID,case when a.DocumentTypeID=3 then c.DocDetailID else '' end As RESITEMNO, c.ProductCode,sale.MaterialCode,sale.productcode As FGProductCode,c.ProductName,(sale.totalqty*sale.materialamount) As Qty,(sale.totalqty*sale.materialamount) As SmallQty,c.UnitName, c.UnitName As SmallUnitName,c.ProductPricePerUnit,c.ProductNetPrice,c.ProductTotalPrice,LineNumber,s1.ShopCode As ToShopCode,s2.ShopCode As FromShopCode,a.DueDate,sale.TranKey\r\n from document a left join document b on a.DocumentIDRef = b.DocumentID and a.DocIDRefShopID = b.KeyShopID join docdetail c on a.DocumentID = c.DocumentID and a.KeyShopID = c.KeyShopID inner join (select mg.*,od.TotalQty as totalQty,od.trankey from orderdetail od inner join MaterialMaster_GIS mg on od.productid=mg.productid inner join ordertransaction tr on od.TranKey=tr.TranKey where od.saledate='{docDate}' and od.shopid={shopId} and OrderStatusID=2 and tr.TransactionStatusID=2) sale on c.productid=sale.MaterialID join shop_data d on a.ShopID = d.ShopID left join vendors e on a.VendorID = e.VendorID left join interface_document_fromsap po on a.DocumentIDRef=po.DocumentID and a.DocIDRefShopID=po.KeyShopID and c.ProductID=po.ProductID left join shop_data s1 on a.ToInvID = s1.ShopID left join shop_data s2 on a.FromInvID = s2.ShopID  where a.DocumentStatus = 2  and a.DocumentKey='{documentKey}' \r\n ) Int_GIS\r\n group by ShopCode,VendorCode, DocumentID,KeyShopID,DocumentKey,POKey,DocumentYear,DocumentMonth,DocumentNo, DocumentNoRef,SupplierMaterialCode,DocumentDate,DocDetailID, RESITEMNO, ProductCode,MaterialCode,FGProductCode,ProductName,UnitName, SmallUnitName,ProductPricePerUnit,ProductNetPrice,ProductTotalPrice,LineNumber,ToShopCode, FromShopCode,DueDate\r\n order by DocDetailID";
             dtL = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connString));
             dtL.TableName = "Detail";
             return dtL;
@@ -1264,7 +1215,7 @@ namespace Doikham.API.Data
         {
             DataTable dtL = new DataTable();
 
-            string queryStr = $"select ROW_NUMBER() OVER (ORDER BY ro.DocDetailID) Row_num,ro.*,wt.InvoiceRef  As EBELN,LPAD(rq.DocDetailID * 10, 5, '0') AS EBELP,s.ShopID,s.ShopCode from (select a.DocumentID, a.KeyShopID, a.DocumentKey, a.DocIDRefShopID, a.DocumentIDRef, a.DocumentNo, a.DocumentNoRef, a.InvoiceRef, b.DocDetailID, b.ProductAmount, b.UnitSmallAmount as Qty,b.UnitSmallAmount as SmallQty, b.UnitName, 'EA' As SmallUnitName, b.ProductID, b.ProductCode, b.ProductName, a.DocumentDate, a.ShopID from document a inner join docdetail b on a.DocumentKey= b.DocumentKey where DocumentTypeID = 25  and DocumentStatus = 2) as ro join shop_data s on ro.ShopID = s.ShopID left join(select a.DocumentID, a.KeyShopID, a.DocumentKey, a.DocIDRefShopID, a.DocumentIDRef, a.DocumentNo, a.DocumentNoRef, a.InvoiceRef, b.DocDetailID, b.ProductAmount, b.UnitSmallAmount,b.UnitSmallAmount as SmallQty, b.UnitName, 'EA' As SmallUnitName, b.ProductID, b.ProductCode, b.ProductName, a.DocumentDate from document a inner join docdetail b on a.DocumentKey= b.DocumentKey where DocumentTypeID = 3  and DocumentStatus = 2) as wt on ro.DocumentIDRef = wt.documentid and ro.DocIDRefShopID = wt.KeyShopID and ro.ProductCode = wt.ProductCode left join (select a.DocumentID, a.KeyShopID, a.DocumentKey, a.DocIDRefShopID, a.DocumentIDRef, a.DocumentNo, a.DocumentNoRef, a.InvoiceRef, b.DocDetailID, b.ProductAmount, b.UnitSmallAmount,b.UnitSmallAmount  As SmallQty, b.UnitName, 'EA' As SmallUnitName, b.ProductID, b.ProductCode, b.ProductName, a.DocumentDate from document a inner join docdetail b on a.DocumentKey= b.DocumentKey where DocumentTypeID = 17 and DocumentStatus = 2) as rq on wt.InvoiceRef = rq.DocumentNoRef and wt.ProductCode = rq.ProductCode where ro.DocumentKey = '{documentKey}' order by ro.DocDetailID";
+            string queryStr = $"select ROW_NUMBER() OVER (ORDER BY ro.DocDetailID) Row_num,ro.*,wt.InvoiceRef  As EBELN,RIGHT(REPLICATE('0',5) + CAST(rq.DocDetailID * 10 AS VARCHAR(20)), 5) AS EBELP,s.ShopID,s.ShopCode from (select a.DocumentID, a.KeyShopID, a.DocumentKey, a.DocIDRefShopID, a.DocumentIDRef, a.DocumentNo, a.DocumentNoRef, a.InvoiceRef, b.DocDetailID, b.ProductAmount, b.UnitSmallAmount as Qty,b.UnitSmallAmount as SmallQty, b.UnitName, 'EA' As SmallUnitName, b.ProductID, b.ProductCode, b.ProductName, a.DocumentDate, a.ShopID from document a inner join docdetail b on a.DocumentKey= b.DocumentKey where DocumentTypeID = 25  and DocumentStatus = 2) as ro join shop_data s on ro.ShopID = s.ShopID left join(select a.DocumentID, a.KeyShopID, a.DocumentKey, a.DocIDRefShopID, a.DocumentIDRef, a.DocumentNo, a.DocumentNoRef, a.InvoiceRef, b.DocDetailID, b.ProductAmount, b.UnitSmallAmount,b.UnitSmallAmount as SmallQty, b.UnitName, 'EA' As SmallUnitName, b.ProductID, b.ProductCode, b.ProductName, a.DocumentDate from document a inner join docdetail b on a.DocumentKey= b.DocumentKey where DocumentTypeID = 3  and DocumentStatus = 2) as wt on ro.DocumentIDRef = wt.documentid and ro.DocIDRefShopID = wt.KeyShopID and ro.ProductCode = wt.ProductCode left join (select a.DocumentID, a.KeyShopID, a.DocumentKey, a.DocIDRefShopID, a.DocumentIDRef, a.DocumentNo, a.DocumentNoRef, a.InvoiceRef, b.DocDetailID, b.ProductAmount, b.UnitSmallAmount,b.UnitSmallAmount  As SmallQty, b.UnitName, 'EA' As SmallUnitName, b.ProductID, b.ProductCode, b.ProductName, a.DocumentDate from document a inner join docdetail b on a.DocumentKey= b.DocumentKey where DocumentTypeID = 17 and DocumentStatus = 2) as rq on wt.InvoiceRef = rq.DocumentNoRef and wt.ProductCode = rq.ProductCode where ro.DocumentKey = '{documentKey}' order by ro.DocDetailID";
             dtL = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connString));
             dtL.TableName = "Detail";
             return dtL;
@@ -1346,33 +1297,30 @@ namespace Doikham.API.Data
             dtH = await Task.Run(() => GetDocumentHeader(documentKey));
 
 
-            GOODISSUEIN_HEADER header = new GOODISSUEIN_HEADER();
             if (dtH.Rows.Count > 0)
             {
 
                 int docTypeId = Convert.ToInt32(dtH.Rows[0]["DocumentTypeId"]);
-                int docMonth = Convert.ToInt32(dtH.Rows[0]["DocumentMonth"]);
-                int docYear = Convert.ToInt32(dtH.Rows[0]["DocumentYear"]);
                 int docNumber = Convert.ToInt32(dtH.Rows[0]["DocumentNumber"]);
                 int docShopId = Convert.ToInt32(dtH.Rows[0]["ShopID"]);
                 DateTime docDate = Convert.ToDateTime(dtH.Rows[0]["documentdate"]);
-                string docNo = "";
-                docNo = $"{shopCoe}{docTypeCode}{docYear}{docMonth}{docDate.Day}";
+                // BSTNK format e.g. 00001GIS20260429
+                string docNo = $"{docNumber.ToString().PadLeft(5, '0')}{docTypeCode}{docDate.ToString("yyyyMMdd", invC)}";
 
-                header.POSTYPE = docTypeCode;
-                header.POSDOCITEM = docNo;
-                header.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                data.POSTYPE = docTypeCode;
+                data.POSDOCITEM = docNo;
+                data.BLDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
                 if (docTypeId == 3)
                 {
-                    header.RESNO = dtH.Rows[0]["documentnoref"].ToString();
+                    data.RESNO = dtH.Rows[0]["documentnoref"].ToString();
                 }
                 else
                 {
-                    header.RESNO = "";
+                    data.RESNO = "";
                 }
-                header.BUDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
-                header.XBLNR = "";
-                header.USNAM = dtH.Rows[0]["staffcode"].ToString();
+                data.BUDAT = Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyyMMdd", invC);
+                data.XBLNR = "";
+                data.USNAM = dtH.Rows[0]["staffcode"].ToString();
                 List<GOODISSUEIN_ITEMS> items = new List<GOODISSUEIN_ITEMS>();
                 dtL = await Task.Run(() => GetDocumentDetail_SaleOrder(documentKey, docShopId, Convert.ToDateTime(dtH.Rows[0]["documentdate"]).ToString("yyyy-MM-dd", invC)));
                 if (dtL.Rows.Count > 0)
@@ -1388,16 +1336,19 @@ namespace Doikham.API.Data
                                  //MENGE = dr["Qty"].ToString(),
                                  MENGE = Convert.ToDecimal(dr["Qty"]).ToString("0.000"),
                                  MEINS = dr["UnitName"].ToString(),
-                                 SGTXT = dr["ProductCode"].ToString(),
+                                 SGTXT = dr["FGProductCode"].ToString(),
                              }).ToList();
                 }
-                header.ITEMS = items;
+                data.toITEMS = items;
             }
-            GOODISSUEIN_ORDER adjust = new GOODISSUEIN_ORDER();
-            adjust.HEADER = header;
-
-            data.GOODS_ISSUE_IN = adjust;
             return data;
+        }
+
+        public async Task<DataTable> GetGisDocumentsForDailySale(int shopId, string saleDate)
+        {
+            DataTable dt = new DataTable();
+            string queryStr = $"select a.ShopId,st.ShopCode,a.DocumentID,a.KeyShopID,a.DocumentKey,a.DocumentYear,a.DocumentMonth,a.DocumentNo,a.DocumentNumber,a.DocumentDate,a.documenttypeid from document a inner join shop_data st on a.shopid=st.shopid where a.DocumentStatus=2 and a.DocumentTypeID=20 and a.ShopID={shopId} and a.DocumentDate={saleDate};";
+            return dt = await Task.Run(() => _dbHelper.ExecuteReaderAsync(queryStr, connString));
         }
         private async Task<DataTable> GetProgramPropertyValue(int properID)
         {

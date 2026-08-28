@@ -4,35 +4,25 @@ using System.Text;
 
 namespace Doikham.Shared.Database
 {
-    public class RETURNTTOSLOC
+    public class RETURNTTOSLOC : GOODISSUEIN_ORDER
     {
-        public GOODISSUEIN_ORDER TRANSFER_SLOC { get; set; }
     }
-    public class RETURNTTODC
+    public class RETURNTTODC : GOODISSUEIN_ORDER
     {
-        public GOODISSUEIN_ORDER RETURNT_TO_DC { get; set; }
     }
-    public class PREFINISHDOCUMENT
+    public class PREFINISHDOCUMENT : GOODISSUEIN_ORDER
     {
-        public GOODISSUEIN_ORDER GI_PREFINISH { get; set; }
     }
-    public class PREFINISHDOCUMENT_GR
+    public class PREFINISHDOCUMENT_GR : GOODISSUEIN_ORDER
     {
-        public GOODISSUEIN_ORDER GR_PREFINISH { get; set; }
     }
-    public class STOCKADJUST
+    public class STOCKADJUST : GOODISSUEIN_ORDER
     {
-        public GOODISSUEIN_ORDER STOCK_ADJUST { get; set; }
     }
-    public class GOODISSUEINDOCUMENT
+    public class GOODISSUEINDOCUMENT : GOODISSUEIN_ORDER
     {
-        public GOODISSUEIN_ORDER GOODS_ISSUE_IN { get; set; }
     }
     public class GOODISSUEIN_ORDER
-    {
-        public GOODISSUEIN_HEADER HEADER { get; set; }
-    }
-    public class GOODISSUEIN_HEADER
     {
         public string POSTYPE { get; set; }
         public string POSDOCITEM { get; set; }
@@ -41,7 +31,7 @@ namespace Doikham.Shared.Database
         public string BUDAT { get; set; }
         public string XBLNR { get; set; }
         public string USNAM { get; set; }
-        public List<GOODISSUEIN_ITEMS> ITEMS { get; set; }
+        public List<GOODISSUEIN_ITEMS> toITEMS { get; set; }
     }
     public class GOODISSUEIN_ITEMS
     {

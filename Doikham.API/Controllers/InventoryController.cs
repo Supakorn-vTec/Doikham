@@ -53,6 +53,36 @@ namespace Doikham.API.Controllers
             }
         }
 
+        private async Task<SapResponse> PostSapAndLogResponse(string action, string json, string uuid, string documentKey, int shopID, int docType)
+        {
+            var insertDate = DateTime.Now;
+            try
+            {
+                HttpResponseMessage resFromSAP = await Task.Run(() => repoSAP.Post(action, json));
+                var sapRes = await Task.Run(() => repoSAP.ParseSapResponse(resFromSAP));
+                var responseJson = sapRes.Json?.ToString() ?? "";
+                await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, sapRes.StatusCode, responseJson));
+                await repoLog.SetApiLog(action, "POST", null, json, responseJson, (short)(sapRes.StatusCode == "S" ? 1 : 0), insertDate, DateTime.Now, sapRes.StatusCode == "S" ? null : sapRes.Message, shopID);
+                return sapRes;
+            }
+            catch (Exception ex)
+            {
+                var errorResponse = new RESPONSEDATA
+                {
+                    RESPONSE = new RESPONSE
+                    {
+                        TYPE = "E",
+                        PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss"),
+                        MESSAGE = ex.Message
+                    }
+                };
+                string jsonError = JsonConvert.SerializeObject(errorResponse);
+                await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, "E", jsonError));
+                await repoLog.SetApiLog(action, "POST", null, json, jsonError, 0, insertDate, DateTime.Now, ex.Message, shopID);
+                return new SapResponse { StatusCode = "E", Message = ex.Message };
+            }
+        }
+
         //Purchase Order
         [HttpPost("[action]")]
         public async Task<ActionResult> PurchaseOrder([FromBody]PURCHASEDOCUMENT data)
@@ -111,21 +141,11 @@ namespace Doikham.API.Controllers
 
                         if (enableSendDataToSAP == true)
                         {
-                            HttpResponseMessage resFromSAP = await Task.Run(() => repoSAP.Post(action, json));
-                            var resMsg = await Task.Run(() => resFromSAP.Content.ReadAsStringAsync());
-                            var jsonLinq = JObject.Parse(resMsg);
-                            DataTable dt = new DataTable();
-                            dt = await Task.Run(() => repoSAP.ConvertResponseToDataTable(resFromSAP));
-                            var resStatusCode = "S";
-                            if (dt.Rows.Count > 0)
-                            {
-                                resStatusCode = dt.Rows[0]["TYPE"].ToString();
-                            }
-                            if (resStatusCode == "S")
-                            {
-                                await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
-                            }
-                                
+                            await PostSapAndLogResponse(action, json, uuid, documentKey, shopID, docType);
+                        }
+                        else
+                        {
+                            await repoLog.SetApiLog(action, "POST", null, json, null, 0, DateTime.Now, DateTime.Now, "SAP:Enable is false", shopID);
                         }
 
                     }
@@ -178,21 +198,11 @@ namespace Doikham.API.Controllers
 
                         if (enableSendDataToSAP == true)
                         {
-                            HttpResponseMessage resFromSAP = await Task.Run(() => repoSAP.Post(action, json));
-                            var resMsg = await Task.Run(() => resFromSAP.Content.ReadAsStringAsync());
-                            var jsonLinq = JObject.Parse(resMsg);
-                            DataTable dt = new DataTable();
-                            dt = await Task.Run(() => repoSAP.ConvertResponseToDataTable(resFromSAP));
-                            var resStatusCode = "S";
-                            if (dt.Rows.Count > 0)
-                            {
-                                resStatusCode = dt.Rows[0]["TYPE"].ToString();
-                            }
-                            if (resStatusCode == "S")
-                            {
-                                await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
-                            }
-
+                            await PostSapAndLogResponse(action, json, uuid, documentKey, shopID, docType);
+                        }
+                        else
+                        {
+                            await repoLog.SetApiLog(action, "POST", null, json, null, 0, DateTime.Now, DateTime.Now, "SAP:Enable is false", shopID);
                         }
                     }
                 }
@@ -253,34 +263,11 @@ namespace Doikham.API.Controllers
 
                         if (enableSendDataToSAP == true)
                         {
-                            try
-                            {
-                                HttpResponseMessage resFromSAP = await Task.Run(() => repoSAP.Post(action, json));
-                                var resMsg = await Task.Run(() => resFromSAP.Content.ReadAsStringAsync());
-                                var jsonLinq = JObject.Parse(resMsg);
-                                DataTable dt = new DataTable();
-                                dt = await Task.Run(() => repoSAP.ConvertResponseToDataTable(resFromSAP));
-                                var resStatusCode = "S";
-                                if (dt.Rows.Count > 0)
-                                {
-                                    resStatusCode = dt.Rows[0]["TYPE"].ToString();
-                                }
-                                if (resStatusCode == "S")
-                                {
-                                    await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
-                                }
-
-                            }
-                            catch (Exception ex) {
-
-                                response.TYPE = "E";
-                                response.PIMSGID = DateTime.Now.ToString("yyyyMMddHHmmss");
-                                response.MESSAGE = ex.Message;
-                                resData.RESPONSE = response;
-                                string jsonError = JsonConvert.SerializeObject(resData);
-                                await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, "E", jsonError.ToString()));
-                            }
-                           
+                            await PostSapAndLogResponse(action, json, uuid, documentKey, shopID, docType);
+                        }
+                        else
+                        {
+                            await repoLog.SetApiLog(action, "POST", null, json, null, 0, DateTime.Now, DateTime.Now, "SAP:Enable is false", shopID);
                         }
                     }
                 }
@@ -317,7 +304,6 @@ namespace Doikham.API.Controllers
                 REQUESTDOCUMENT data = new REQUESTDOCUMENT();
                 string action = "REQUESTFORM";
                 string documentKey = "";
-                string docRefKey = "";
                 DataTable dtLog = new DataTable();
                 dtLog = await Task.Run(() => repoLog.GetLog(docType));
                 if (dtLog.Rows.Count > 0)
@@ -335,24 +321,15 @@ namespace Doikham.API.Controllers
 
                         if (enableSendDataToSAP == true)
                         {
-                            HttpResponseMessage resFromSAP = await Task.Run(() => repoSAP.Post(action, json));
-                            var resMsg = await Task.Run(() => resFromSAP.Content.ReadAsStringAsync());
-                            var jsonLinq = JObject.Parse(resMsg);
-                            DataTable dt = new DataTable();
-                            dt = await Task.Run(() => repoSAP.ConvertResponseToDataTable(resFromSAP));
-                            var resStatusCode = "S";
-                            var obj = ToObject<RESPONSE>("RESPONSE", jsonLinq.ToString());
-                            //if (dt.Rows.Count > 0)
-                            //{
-                            //    resStatusCode = dt.Rows[0]["TYPE"].ToString();
-                            //    docRefKey = dt.Rows[0]["DOC_NO"].ToString();
-                            //}
-                            if (resStatusCode == "S")
+                            var sapRes = await PostSapAndLogResponse(action, json, uuid, documentKey, shopID, docType);
+                            if (sapRes.StatusCode == "S" && !string.IsNullOrEmpty(sapRes.DocNo))
                             {
-                                await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
-                                await Task.Run(() => repoLog.SetDocumentRefFromSAP(documentKey, obj.DOC_NO));
+                                await Task.Run(() => repoLog.SetDocumentRefFromSAP(documentKey, sapRes.DocNo));
                             }
-
+                        }
+                        else
+                        {
+                            await repoLog.SetApiLog(action, "POST", null, json, null, 0, DateTime.Now, DateTime.Now, "SAP:Enable is false", shopID);
                         }
                     }
                 }
@@ -433,21 +410,11 @@ namespace Doikham.API.Controllers
 
                         if (enableSendDataToSAP == true)
                         {
-                            HttpResponseMessage resFromSAP = await Task.Run(() => repoSAP.Post(action, json));
-                            var resMsg = await Task.Run(() => resFromSAP.Content.ReadAsStringAsync());
-                            var jsonLinq = JObject.Parse(resMsg);
-                            DataTable dt = new DataTable();
-                            dt = await Task.Run(() => repoSAP.ConvertResponseToDataTable(resFromSAP));
-                            var resStatusCode = "S";
-                            if (dt.Rows.Count > 0)
-                            {
-                                resStatusCode = dt.Rows[0]["TYPE"].ToString();
-                            }
-                            if(resStatusCode == "S")
-                            {
-                                await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
-                            }
-
+                            await PostSapAndLogResponse(action, json, uuid, documentKey, shopID, docType);
+                        }
+                        else
+                        {
+                            await repoLog.SetApiLog(action, "POST", null, json, null, 0, DateTime.Now, DateTime.Now, "SAP:Enable is false", shopID);
                         }
                     }
                 }
@@ -482,7 +449,7 @@ namespace Doikham.API.Controllers
             try
             {
                 STOCKADJUST data = new STOCKADJUST();
-                string action = "GOODSISSUE";
+                string action = "STOCK_ADJUST";
                 string documentKey = "";
 
                 DataTable dtLog = new DataTable();
@@ -505,21 +472,11 @@ namespace Doikham.API.Controllers
 
                         if (enableSendDataToSAP == true)
                         {
-                            HttpResponseMessage resFromSAP = await Task.Run(() => repoSAP.Post(action, json));
-                            var resMsg = await Task.Run(() => resFromSAP.Content.ReadAsStringAsync());
-                            var jsonLinq = JObject.Parse(resMsg);
-                            DataTable dt = new DataTable();
-                            dt = await Task.Run(() => repoSAP.ConvertResponseToDataTable(resFromSAP));
-                            var resStatusCode = "S";
-                            if (dt.Rows.Count > 0)
-                            {
-                                resStatusCode = dt.Rows[0]["TYPE"].ToString();
-                            }
-                            if (resStatusCode == "S")
-                            {
-                                await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
-                            }
-                            
+                            await PostSapAndLogResponse(action, json, uuid, documentKey, shopID, docType);
+                        }
+                        else
+                        {
+                            await repoLog.SetApiLog(action, "POST", null, json, null, 0, DateTime.Now, DateTime.Now, "SAP:Enable is false", shopID);
                         }
                     }
                 }
@@ -577,21 +534,11 @@ namespace Doikham.API.Controllers
 
                         if (enableSendDataToSAP == true)
                         {
-                            HttpResponseMessage resFromSAP = await Task.Run(() => repoSAP.Post(action, json));
-                            var resMsg = await Task.Run(() => resFromSAP.Content.ReadAsStringAsync());
-                            var jsonLinq = JObject.Parse(resMsg);
-                            DataTable dt = new DataTable();
-                            dt = await Task.Run(() => repoSAP.ConvertResponseToDataTable(resFromSAP));
-                            var resStatusCode = "S";
-                            if (dt.Rows.Count > 0)
-                            {
-                                resStatusCode = dt.Rows[0]["TYPE"].ToString();
-                            }
-                            if (resStatusCode == "S")
-                            {
-                                await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
-                            }
-                              
+                            await PostSapAndLogResponse(action, json, uuid, documentKey, shopID, docType);
+                        }
+                        else
+                        {
+                            await repoLog.SetApiLog(action, "POST", null, json, null, 0, DateTime.Now, DateTime.Now, "SAP:Enable is false", shopID);
                         }
                     }
                 }
@@ -649,21 +596,11 @@ namespace Doikham.API.Controllers
 
                         if (enableSendDataToSAP == true)
                         {
-                            HttpResponseMessage resFromSAP = await Task.Run(() => repoSAP.Post(action, json));
-                            var resMsg = await Task.Run(() => resFromSAP.Content.ReadAsStringAsync());
-                            var jsonLinq = JObject.Parse(resMsg);
-                            DataTable dt = new DataTable();
-                            dt = await Task.Run(() => repoSAP.ConvertResponseToDataTable(resFromSAP));
-                            var resStatusCode = "S";
-                            if (dt.Rows.Count > 0)
-                            {
-                                resStatusCode = dt.Rows[0]["TYPE"].ToString();
-                            }
-                            if (resStatusCode == "S")
-                            {
-                                await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
-                            }
-                              
+                            await PostSapAndLogResponse(action, json, uuid, documentKey, shopID, docType);
+                        }
+                        else
+                        {
+                            await repoLog.SetApiLog(action, "POST", null, json, null, 0, DateTime.Now, DateTime.Now, "SAP:Enable is false", shopID);
                         }
                     }
                 }
@@ -721,21 +658,11 @@ namespace Doikham.API.Controllers
 
                         if (enableSendDataToSAP == true)
                         {
-                            HttpResponseMessage resFromSAP = await Task.Run(() => repoSAP.Post(action, json));
-                            var resMsg = await Task.Run(() => resFromSAP.Content.ReadAsStringAsync());
-                            var jsonLinq = JObject.Parse(resMsg);
-                            DataTable dt = new DataTable();
-                            dt = await Task.Run(() => repoSAP.ConvertResponseToDataTable(resFromSAP));
-                            var resStatusCode = "S";
-                            if (dt.Rows.Count > 0)
-                            {
-                                resStatusCode = dt.Rows[0]["TYPE"].ToString();
-                            }
-                            if (resStatusCode == "S")
-                            {
-                                await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
-                            }
-                              
+                            await PostSapAndLogResponse(action, json, uuid, documentKey, shopID, docType);
+                        }
+                        else
+                        {
+                            await repoLog.SetApiLog(action, "POST", null, json, null, 0, DateTime.Now, DateTime.Now, "SAP:Enable is false", shopID);
                         }
                     }
                 }
@@ -793,21 +720,11 @@ namespace Doikham.API.Controllers
 
                         if (enableSendDataToSAP == true)
                         {
-                            HttpResponseMessage resFromSAP = await Task.Run(() => repoSAP.Post(action, json));
-                            var resMsg = await Task.Run(() => resFromSAP.Content.ReadAsStringAsync());
-                            var jsonLinq = JObject.Parse(resMsg);
-                            DataTable dt = new DataTable();
-                            dt = await Task.Run(() => repoSAP.ConvertResponseToDataTable(resFromSAP));
-                            var resStatusCode = "S";
-                            if (dt.Rows.Count > 0)
-                            {
-                                resStatusCode = dt.Rows[0]["TYPE"].ToString();
-                            }
-                            if (resStatusCode == "S")
-                            {
-                                await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
-                            }
-                              
+                            await PostSapAndLogResponse(action, json, uuid, documentKey, shopID, docType);
+                        }
+                        else
+                        {
+                            await repoLog.SetApiLog(action, "POST", null, json, null, 0, DateTime.Now, DateTime.Now, "SAP:Enable is false", shopID);
                         }
                     }
                 }
@@ -849,6 +766,9 @@ namespace Doikham.API.Controllers
                     case SAPMETHOD.GOODSISSUE:
                         action = "GOODSISSUE";
                         break;
+                    case SAPMETHOD.STOCK_ADJUST:
+                        action = "STOCK_ADJUST";
+                        break;
                     case SAPMETHOD.GOODSRECEIPT:
                         action = "GOODSRECEIPT";
                         break;
@@ -873,22 +793,7 @@ namespace Doikham.API.Controllers
                         string json = dtLog.Rows[i]["msglog"].ToString();
                         var jsonData = JObject.Parse(json);
 
-                        HttpResponseMessage resFromSAP = await Task.Run(() => repoSAP.Post(action, jsonData.ToString()));
-                        var resMsg = await Task.Run(() => resFromSAP.Content.ReadAsStringAsync());
-                        var jsonLinq = JObject.Parse(resMsg);
-
-                        DataTable dt = new DataTable();
-                        dt = await Task.Run(() => repoSAP.ConvertResponseToDataTable(resFromSAP));
-                        var resStatusCode = "S";
-                        if (dt.Rows.Count > 0)
-                        {
-                            resStatusCode = dt.Rows[0]["TYPE"].ToString();
-                        }
-                        if (resStatusCode == "S")
-                        {
-                            await Task.Run(() => repoLog.SetResponseLog(uuid, documentKey, shopID, docType, resStatusCode, jsonLinq.ToString()));
-                        }
-                           
+                        await PostSapAndLogResponse(action, jsonData.ToString(), uuid, documentKey, shopID, docType);
                     }
                 }
                 response.TYPE = "S";

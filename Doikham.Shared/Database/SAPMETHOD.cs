@@ -9,6 +9,7 @@ namespace Doikham.Shared.Database
         REQUESTFORM,
         GOODSRECEIPT,
         GOODSISSUE,
+        STOCK_ADJUST,
         RECIPES
     }
     public class RESENDDATA

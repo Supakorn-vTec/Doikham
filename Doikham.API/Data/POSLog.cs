@@ -122,13 +122,13 @@ namespace Doikham.API.Data
         public async Task<string> SetLog(string tranKey, int shopID, string docDate, int docType, string statusCode, string msgLog)
         {
             var uuid = Guid.NewGuid().ToString();
-            string queryStr = $"insert into SAPBOne_Interface_Log(UUID,TranKey,ShopID,DocDate,DocType,StatusCode,MsgLog,DateTimeStamp)values('{uuid}','{tranKey}',{shopID},{docDate},{docType},'{statusCode}','{msgLog}',GETDATE());";
+            string queryStr = $"insert into SAPBOne_Interface_Log(UUID,TranKey,ShopID,DocDate,DocType,StatusCode,MsgLog,DateTimeStamp)values({SqlStr(uuid)},{SqlStr(tranKey)},{shopID},{SqlDocDate(docDate)},{docType},{SqlStr(statusCode)},{SqlStr(msgLog)},GETDATE());";
             await Task.Run(() => _dbHelper.ExecuteNonQuery(queryStr, connString));
             return uuid;
         }
         public async Task<int> SetResponseLog(string uuid, string tranKey, int shopID, int docType, string statusCode, string msgLog)
         {
-            string queryStr = $"update SAPBOne_Interface_Log set ResMsgLog='{msgLog}',ResStatus='{statusCode}',ResDatetimeStamp=GETDATE() where UUID='{uuid}' and TranKey='{tranKey}' and ShopID={shopID} and DocType={docType}";
+            string queryStr = $"update SAPBOne_Interface_Log set ResMsgLog={SqlStr(msgLog)},ResStatus={SqlStr(statusCode)},ResDatetimeStamp=GETDATE() where UUID={SqlStr(uuid)} and TranKey={SqlStr(tranKey)} and ShopID={shopID} and DocType={docType}";
             return await Task.Run(() => _dbHelper.ExecuteNonQuery(queryStr, connString));
         }
         public async Task<int> SetDocumentRefFromSAP( string tranKey, string refKey)
@@ -147,6 +147,30 @@ namespace Doikham.API.Data
             string queryStr = $"insert into log_api(batchuuid,apiname,apimethod,params,bodyparam,responsedata,apistatus,insertdate,finishdate,errormessage,shopid,computerid,terminalid,staffid)" +
                 $"values('{uuid}',{SqlStr(apiName)},{SqlStr(apiMethod)},{SqlStr(queryParams)},{SqlStr(bodyParam)},{SqlStr(responseData)},{apiStatus},{SqlDate(insertDate)},{finish},{SqlStr(errorMessage)},{shopId},{computerId},{SqlStr(terminalId)},{staffId});";
             await Task.Run(() => _dbHelper.ExecuteNonQuery(queryStr, connString));
+        }
+
+        private static string SqlStr(string value) => value == null ? "NULL" : $"'{value.Replace("'", "''")}'";
+
+        private static string SqlDocDate(string docDate)
+        {
+            if (string.IsNullOrWhiteSpace(docDate))
+            {
+                return "GETDATE()";
+            }
+
+            var trimmed = docDate.Trim();
+            if (trimmed.StartsWith("{ d'", StringComparison.OrdinalIgnoreCase))
+            {
+                var inner = trimmed.Replace("{ d'", "", StringComparison.OrdinalIgnoreCase).Replace("'}", "").Trim();
+                return $"'{inner}'";
+            }
+
+            if (trimmed.StartsWith("'"))
+            {
+                return trimmed;
+            }
+
+            return $"'{trimmed}'";
         }
         #endregion
     }

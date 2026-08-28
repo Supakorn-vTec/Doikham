@@ -19,14 +19,16 @@ namespace Doikham.API.Controllers
     public class SalesController : ControllerBase
     {
         private ISales repo { get; set; }
+        private IInventory repoInv { get; set; }
         private ISAP repoSAP { get; set; }
         private IPOSLog repoLog { get; set; }
         CultureInfo invC;
         private readonly IConfiguration _config;
         private bool enableSendDataToSAP = true;
-        public SalesController(ISales sales, ISAP sap, IPOSLog poslog, IConfiguration configuration)
+        public SalesController(ISales sales, IInventory inventory, ISAP sap, IPOSLog poslog, IConfiguration configuration)
         {
             repo = sales;
+            repoInv = inventory;
             repoSAP = sap;
             repoLog = poslog;
             invC = new CultureInfo("en-US");
@@ -54,6 +56,20 @@ namespace Doikham.API.Controllers
                     string statusCode = "S";
                     string saleDate = "{ d'" + Convert.ToDateTime(dt.Rows[i]["saledate"]).ToString("yyyy-MM-dd", invC) + "'} ";
                     string data = await Task.Run(() => repo.DailySales(shopId, saleDate));
+
+                    // Append GIS SalesOrder BOM as X/Y lines (separate BSTNK set e.g. 00001GIS20260429)
+                    DataTable dtGis = await Task.Run(() => repoInv.GetGisDocumentsForDailySale(shopId, saleDate));
+                    if (dtGis.Rows.Count > 0)
+                    {
+                        for (int g = 0; g < dtGis.Rows.Count; g++)
+                        {
+                            string documentKey = dtGis.Rows[g]["documentkey"].ToString();
+                            string shopCoe = dtGis.Rows[g]["shopCode"].ToString();
+                            var gisData = await Task.Run(() => repoInv.SalesOrderAsync(documentKey, "GIS", shopCoe));
+                            data += repo.BuildGisBomText(shopCoe, gisData);
+                        }
+                    }
+
                     string uuid = await Task.Run(() => repoLog.SetLog(tranKey, shopId, saleDate, docType, statusCode, data));
 
                     string timeSp = DateTime.Now.ToString("HHmmss", invC);

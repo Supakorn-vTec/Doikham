@@ -6,19 +6,11 @@ namespace Doikham.Shared.Database
 {
    public class REQUESTDOCUMENT
     {
-        public REQUEST_ORDER REQUEST_FORM { get; set; }
-    }
-    public class REQUEST_ORDER
-    {
-        public REQUEST_HEADER HEADER { get; set; }
-    }
-    public class REQUEST_HEADER
-    {
         public string POSTYPE { get; set; }
         public string BLDAT { get; set; }
         public string BKTXT { get; set; }
         public string HGTXT { get; set; }
-        public List<REQUEST_ITEMS> ITEMS { get; set; }
+        public List<REQUEST_ITEMS> toITEMS { get; set; }
     }
     public class REQUEST_ITEMS
     {

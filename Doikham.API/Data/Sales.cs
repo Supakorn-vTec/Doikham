@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Doikham.Shared.Database;
 
 namespace Doikham.API.Data
 {
@@ -14,6 +15,7 @@ namespace Doikham.API.Data
     {
         public  Task<DataTable> GetLog();
         public Task<string> DailySales(int shopId, string saleDate);
+        public string BuildGisBomText(string shopCode, GOODISSUEINDOCUMENT gisData);
         public void WriteFile(string path, string data);
     }
     public class Sales : ISales
@@ -69,6 +71,39 @@ namespace Doikham.API.Data
             }
             return sb.ToString();
         }
+
+        public string BuildGisBomText(string shopCode, GOODISSUEINDOCUMENT gisData)
+        {
+            var sb = new StringBuilder();
+            if (gisData == null)
+            {
+                return sb.ToString();
+            }
+
+            string bstnk = gisData.POSDOCITEM ?? "";
+            string saleDate = gisData.BLDAT ?? "";
+            // X: POS_SHOPID | BSTNK | Date
+            string X = $"X|{AppendSpaceToString(shopCode, 20)}|{AppendSpaceToString(bstnk, 20)}|{AppendSpaceToString(saleDate, 8)}|";
+            sb.AppendLine(X);
+
+            if (gisData.toITEMS != null)
+            {
+                for (int i = 0; i < gisData.toITEMS.Count; i++)
+                {
+                    var item = gisData.toITEMS[i];
+                    // Y: POSGIITEMNO | MATNRFG(SGTXT) | MATNRBOM(MATNR) | MENGE | MEINS
+                    string menge = item.MENGE ?? "0.000";
+                    if (decimal.TryParse(menge, NumberStyles.Any, invC, out decimal qty))
+                    {
+                        menge = qty.ToString("0.000", invC);
+                    }
+                    string Y = $"Y|{AppendSpaceToString(item.POSGIITEMNO ?? "", 2)}|{AppendSpaceToString(item.SGTXT ?? "", 18)}|{AppendSpaceToString(item.MATNR ?? "", 18)}|{AppendSpaceToString(menge, 13)}|{AppendSpaceToString(item.MEINS ?? "", 3)}|";
+                    sb.AppendLine(Y);
+                }
+            }
+            return sb.ToString();
+        }
+
         private string AppendSpaceToString( string value, int len)
         {
             string padright = value.ToString().PadRight(len, ' ');

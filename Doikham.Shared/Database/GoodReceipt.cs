@@ -6,21 +6,13 @@ namespace Doikham.Shared.Database
 {
    public class GOODRECEIPTDOCUMENT
     {
-        public GOODRECEIPT_ORDER GOODS_RECEIPT { get; set; }
-    }
-    public class GOODRECEIPT_ORDER
-    {
-        public GOODRECEIPT_HEADER HEADER { get; set; }
-    }
-    public class GOODRECEIPT_HEADER
-    {
         public string POSTYPE { get; set; } = "";
         public string BLDAT { get; set; } = "";
         public string BKTXT { get; set; } = "";
         public string LFSNR { get; set; } = "";
         public string BUDAT { get; set; } = "";
         public string USNAM { get; set; } = "";
-        public List<GOODRECEIPT_ITEMS> ITEMS { get; set; }
+        public List<GOODRECEIPT_ITEMS> toITEMS { get; set; }
     }
     public class GOODRECEIPT_ITEMS
     {
