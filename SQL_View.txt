@@ -12,11 +12,6 @@ case when bb.FullTaxNumber is null then cc.companyzipcode else bb.InvoiceZipCode
 case when bb.FullTaxNumber is null then cc.companytaxID else bb.InvoiceTaxID end AS TAX_ID, 
 case when bb.FullTaxNumber is null then cc.BranchNo else bb.InvoiceCompanyBranchNo end AS BRANCH, 
 aa.SaleDate AS BSTDK, aa.SaleDate AS VBAK_ERDAT, case when mm.MemberGroupCode is null or mm.MemberGroupCode='CREDIT CUSTOMER' then 'S1' else mm.MemberGroupCode end AS PLTYP, 
-case when bb.FullTaxNumber is null then '' else bb.InvoiceEmail end AS EMAIL,
-case when bb.FullTaxNumber is null then '' else bb.RegistrationNumber end AS POSID,
-case when bb.FullTaxNumber is null then '' else aa.ReceiptNumber end AS REFNO,
-case when bb.FullTaxNumber is null then '' else aa.PaidStaff end AS SALEMAN,
-case when bb.FullTaxNumber is null then 0 else aa.ReceiptRoundingBill end AS ROUNDING,
 aa.TransactionID, aa.ComputerID, aa.ShopID, aa.SaleDate, aa.TranKey
 FROM            dbo.ordertransaction AS aa LEFT OUTER JOIN
                              (SELECT        b.TransactionID, b.ComputerID, a.FullTaxNumber, a.SaleDate, a.InvoiceName, a.InvoiceName1, a.InvoiceCompanyType, a.InvoiceCompanyBranchNo, a.InvoiceAddress1, a.InvoiceAddress2, a.InvoiceCity, 
